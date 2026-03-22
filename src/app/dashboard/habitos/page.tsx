@@ -67,14 +67,14 @@ export default function HabitosPage() {
           {/* Week grid */}
           <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
             {/* Header */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr repeat(7, 40px)', gap: 0, borderBottom: '1px solid var(--border)', padding: '12px 16px', alignItems: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr repeat(7, 52px)', gap: 0, borderBottom: '1px solid var(--border)', padding: '12px 16px', alignItems: 'center' }}>
               <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-d)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Hábito</span>
               {weekDays.map(d => (
                 <div key={d} style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 9, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: .5 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: .5 }}>
                     {format(new Date(d + 'T12:00:00'), 'EEE', { locale: ptBR })}
                   </div>
-                  <div style={{ fontSize: 11, fontWeight: d === today ? 700 : 400, color: d === today ? 'var(--accent)' : 'var(--text3)' }}>
+                  <div style={{ fontSize: 12, fontWeight: d === today ? 700 : 400, color: d === today ? 'var(--accent)' : 'var(--text3)' }}>
                     {format(new Date(d + 'T12:00:00'), 'd')}
                   </div>
                 </div>
@@ -90,7 +90,7 @@ export default function HabitosPage() {
                 const streak = getStreak(habit.id)
                 return (
                   <div key={habit.id}
-                    style={{ display: 'grid', gridTemplateColumns: '1fr repeat(7, 40px)', gap: 0, padding: '12px 16px', alignItems: 'center', borderBottom: idx < habits.length - 1 ? '1px solid var(--border)' : 'none', background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,.01)' }}>
+                    style={{ display: 'grid', gridTemplateColumns: '1fr repeat(7, 52px)', gap: 0, padding: '12px 16px', alignItems: 'center', borderBottom: idx < habits.length - 1 ? '1px solid var(--border)' : 'none', background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,.01)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                       <span style={{ fontSize: 18 }}>{habit.icon}</span>
                       <div style={{ minWidth: 0 }}>
