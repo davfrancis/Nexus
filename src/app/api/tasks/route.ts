@@ -69,6 +69,9 @@ export async function POST(req: Request) {
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: 'Failed to create task' }, { status: 500 })
+  if (error) {
+    console.error('Task insert error:', JSON.stringify(error))
+    return NextResponse.json({ error: 'Failed to create task', detail: error.message, code: error.code }, { status: 500 })
+  }
   return NextResponse.json({ task: data })
 }
