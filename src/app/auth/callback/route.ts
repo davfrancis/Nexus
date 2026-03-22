@@ -1,13 +1,19 @@
 // src/app/auth/callback/route.ts
-// Callback do OAuth — Supabase redireciona aqui após login Google
-
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+const ALLOWED_REDIRECTS = ['/dashboard', '/dashboard/agenda', '/login']
+
+function safeRedirect(next: string | null): string {
+  if (!next) return '/dashboard'
+  if (ALLOWED_REDIRECTS.some(allowed => next.startsWith(allowed))) return next
+  return '/dashboard'
+}
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
-  const code  = searchParams.get('code')
-  const next  = searchParams.get('next') ?? '/dashboard'
+  const code = searchParams.get('code')
+  const next = safeRedirect(searchParams.get('next'))
 
   if (code) {
     const supabase = await createClient()

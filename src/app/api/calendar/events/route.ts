@@ -1,10 +1,12 @@
 // src/app/api/calendar/events/route.ts
-// GET  /api/calendar/events?month=YYYY-MM  — lista eventos do mês
-// POST /api/calendar/events                 — cria evento (local + GCal)
-
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createCalendarEvent } from '@/lib/google-calendar'
+
+const VALID_CATEGORIES = ['work', 'personal', 'gym', 'study', 'urgent']
+const VALID_RECURRENCES = ['none', 'daily', 'weekly', 'monthly']
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
+const TIME_REGEX = /^\d{2}:\d{2}(:\d{2})?$/
 
 export async function GET(req: Request) {
   const supabase = await createClient()
@@ -13,6 +15,10 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url)
   const month = searchParams.get('month') || new Date().toISOString().slice(0, 7)
+
+  if (!/^\d{4}-\d{2}$/.test(month)) {
+    return NextResponse.json({ error: 'invalid month format' }, { status: 400 })
+  }
 
   const { data, error } = await supabase
     .from('events')
@@ -23,7 +29,7 @@ export async function GET(req: Request) {
     .order('event_date', { ascending: true })
     .order('start_time', { ascending: true })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Failed to fetch events' }, { status: 500 })
   return NextResponse.json({ events: data })
 }
 
@@ -32,29 +38,58 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await req.json()
-  const { title, description, event_date, start_time, end_time, category, recurrence } = body
-
-  if (!title || !event_date) {
-    return NextResponse.json({ error: 'title and event_date are required' }, { status: 400 })
+  let body: Record<string, unknown>
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
-  // 1. Salva no Supabase
+  const { title, description, event_date, start_time, end_time, category, recurrence } = body
+
+  if (!title || typeof title !== 'string' || title.trim().length === 0) {
+    return NextResponse.json({ error: 'title is required' }, { status: 400 })
+  }
+  if (title.length > 255) {
+    return NextResponse.json({ error: 'title too long' }, { status: 400 })
+  }
+  if (!event_date || !DATE_REGEX.test(event_date as string)) {
+    return NextResponse.json({ error: 'invalid event_date format (YYYY-MM-DD)' }, { status: 400 })
+  }
+  if (description && (typeof description !== 'string' || description.length > 5000)) {
+    return NextResponse.json({ error: 'description too long' }, { status: 400 })
+  }
+  if (start_time && !TIME_REGEX.test(start_time as string)) {
+    return NextResponse.json({ error: 'invalid start_time format (HH:MM)' }, { status: 400 })
+  }
+  if (end_time && !TIME_REGEX.test(end_time as string)) {
+    return NextResponse.json({ error: 'invalid end_time format (HH:MM)' }, { status: 400 })
+  }
+  if (category && !VALID_CATEGORIES.includes(category as string)) {
+    return NextResponse.json({ error: 'invalid category' }, { status: 400 })
+  }
+  if (recurrence && !VALID_RECURRENCES.includes(recurrence as string)) {
+    return NextResponse.json({ error: 'invalid recurrence' }, { status: 400 })
+  }
+
   const { data: saved, error } = await supabase
     .from('events')
     .insert({
       user_id: user.id,
-      title, description, event_date, start_time, end_time,
-      category: category || 'work',
-      recurrence: recurrence || 'none',
+      title: (title as string).trim(),
+      description: description || null,
+      event_date: event_date as string,
+      start_time: start_time || null,
+      end_time: end_time || null,
+      category: (category as string) || 'work',
+      recurrence: (recurrence as string) || 'none',
       source: 'local',
     })
     .select()
     .single()
 
-  if (error || !saved) return NextResponse.json({ error: error?.message }, { status: 500 })
+  if (error || !saved) return NextResponse.json({ error: 'Failed to create event' }, { status: 500 })
 
-  // 2. Tenta criar no Google Calendar
   const { data: profile } = await supabase
     .from('profiles')
     .select('google_access_token')
@@ -64,8 +99,9 @@ export async function POST(req: Request) {
   let gcalResult = null
   if (profile?.google_access_token && start_time) {
     gcalResult = await createCalendarEvent(profile.google_access_token, {
-      title, description, date: event_date,
-      startTime: start_time, endTime: end_time || start_time,
+      title: title as string, description: description as string,
+      date: event_date as string,
+      startTime: start_time as string, endTime: (end_time || start_time) as string,
     })
     if (gcalResult) {
       await supabase

@@ -79,7 +79,7 @@ export async function POST(req: Request) {
       message: `${rows.length} eventos sincronizados`,
     })
   } catch (err) {
-    console.error('GCal sync error:', err)
-    return NextResponse.json({ error: 'Sync failed', details: String(err) }, { status: 500 })
+    console.error('GCal sync error:', err instanceof Error ? err.message : 'unknown error')
+    return NextResponse.json({ error: 'Sync failed' }, { status: 500 })
   }
 }
