@@ -1,57 +1,49 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import type { Note } from '@/types/database'
 
 export function useNotes() {
   const [notes, setNotes] = useState<Note[]>([])
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
 
   const fetchAll = useCallback(async () => {
-    const { data } = await supabase
-      .from('notes')
-      .select('*')
-      .order('pinned', { ascending: false })
-      .order('updated_at', { ascending: false })
-    if (data) setNotes(data)
+    const res = await fetch('/api/notes')
+    if (res.ok) {
+      const json = await res.json()
+      setNotes(json.notes || [])
+    }
     setLoading(false)
-  }, [supabase])
+  }, [])
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
   const addNote = async (fields: { title: string; content?: string; tag?: string }) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return null
-    const { data } = await supabase
-      .from('notes')
-      .insert({
-        user_id: user.id,
-        title: fields.title,
-        content: fields.content || null,
-        tag: fields.tag || 'general',
-        pinned: false,
-      } as any)
-      .select()
-      .single()
-    if (data) setNotes(prev => [data, ...prev])
-    return data
+    const res = await fetch('/api/notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(fields),
+    })
+    if (!res.ok) return null
+    const json = await res.json()
+    if (json.note) setNotes(prev => [json.note, ...prev])
+    return json.note
   }
 
   const updateNote = async (id: string, updates: Partial<Pick<Note, 'title' | 'content' | 'tag' | 'pinned'>>) => {
-    const { data } = await supabase
-      .from('notes')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single()
-    if (data) setNotes(prev => prev.map(n => n.id === id ? data : n))
-    return data
+    const res = await fetch(`/api/notes/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    })
+    if (!res.ok) return null
+    const json = await res.json()
+    if (json.note) setNotes(prev => prev.map(n => n.id === id ? json.note : n))
+    return json.note
   }
 
   const deleteNote = async (id: string) => {
-    await supabase.from('notes').delete().eq('id', id)
+    await fetch(`/api/notes/${id}`, { method: 'DELETE' })
     setNotes(prev => prev.filter(n => n.id !== id))
   }
 

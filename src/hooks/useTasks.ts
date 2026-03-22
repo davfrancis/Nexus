@@ -1,6 +1,4 @@
 // src/hooks/useTasks.ts
-// Hook de tarefas com CRUD e realtime updates
-
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
@@ -13,46 +11,51 @@ export function useTasks() {
   const supabase = createClient()
 
   const fetchTasks = useCallback(async () => {
-    const { data } = await supabase
-      .from('tasks')
-      .select('*')
-      .order('created_at', { ascending: false })
-    if (data) setTasks(data)
+    const res = await fetch('/api/tasks')
+    if (res.ok) {
+      const json = await res.json()
+      setTasks(json.tasks || [])
+    }
     setLoading(false)
-  }, [supabase])
+  }, [])
 
   useEffect(() => {
     fetchTasks()
 
-    // Realtime: atualiza automaticamente quando qualquer cliente muda dados
     const channel = supabase
       .channel('tasks_changes')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'tasks',
-      }, () => fetchTasks())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => fetchTasks())
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
   }, [fetchTasks, supabase])
 
   const addTask = async (task: Omit<Task, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return null
-    const { data } = await supabase.from('tasks').insert({ ...task, user_id: user.id } as any).select().single()
-    if (data) setTasks(prev => [data, ...prev])
-    return data
+    const res = await fetch('/api/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(task),
+    })
+    if (!res.ok) return null
+    const json = await res.json()
+    if (json.task) setTasks(prev => [json.task, ...prev])
+    return json.task
   }
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
-    const { data } = await supabase.from('tasks').update(updates).eq('id', id).select().single()
-    if (data) setTasks(prev => prev.map(t => t.id === id ? data : t))
-    return data
+    const res = await fetch(`/api/tasks/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    })
+    if (!res.ok) return null
+    const json = await res.json()
+    if (json.task) setTasks(prev => prev.map(t => t.id === id ? json.task : t))
+    return json.task
   }
 
   const deleteTask = async (id: string) => {
-    await supabase.from('tasks').delete().eq('id', id)
+    await fetch(`/api/tasks/${id}`, { method: 'DELETE' })
     setTasks(prev => prev.filter(t => t.id !== id))
   }
 
