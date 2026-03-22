@@ -3,12 +3,8 @@
 
 export type Json = string | number | boolean | null | { [key: string]: Json } | Json[]
 
-export interface Database {
+export type Database = {
   public: {
-    Views: { [_ in never]: never }
-    Functions: { [_ in never]: never }
-    Enums: { [_ in never]: never }
-    CompositeTypes: { [_ in never]: never }
     Tables: {
       profiles: {
         Row: {
@@ -21,8 +17,27 @@ export interface Database {
           google_token_expiry: string | null
           created_at: string
         }
-        Insert: Omit<Database['public']['Tables']['profiles']['Row'], 'created_at'>
-        Update: Partial<Database['public']['Tables']['profiles']['Insert']>
+        Insert: {
+          id: string
+          name?: string | null
+          avatar_url?: string | null
+          timezone?: string
+          google_access_token?: string | null
+          google_refresh_token?: string | null
+          google_token_expiry?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string | null
+          avatar_url?: string | null
+          timezone?: string
+          google_access_token?: string | null
+          google_refresh_token?: string | null
+          google_token_expiry?: string | null
+          created_at?: string
+        }
+        Relationships: []
       }
       tasks: {
         Row: {
@@ -30,15 +45,38 @@ export interface Database {
           user_id: string
           title: string
           description: string | null
-          category: 'work' | 'personal' | 'gym' | 'study' | 'urgent'
-          priority: 'high' | 'medium' | 'low'
-          status: 'todo' | 'doing' | 'done'
+          category: string
+          priority: string
+          status: string
           due_date: string | null
           created_at: string
           updated_at: string
         }
-        Insert: Omit<Database['public']['Tables']['tasks']['Row'], 'id' | 'created_at' | 'updated_at'>
-        Update: Partial<Database['public']['Tables']['tasks']['Insert']>
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          description?: string | null
+          category?: string
+          priority?: string
+          status?: string
+          due_date?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          description?: string | null
+          category?: string
+          priority?: string
+          status?: string
+          due_date?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       events: {
         Row: {
@@ -53,13 +91,46 @@ export interface Database {
           recurrence: string
           gcal_event_id: string | null
           gcal_calendar_id: string | null
-          source: 'local' | 'gcal'
+          source: string
           color: string | null
           created_at: string
           updated_at: string
         }
-        Insert: Omit<Database['public']['Tables']['events']['Row'], 'id' | 'created_at' | 'updated_at'>
-        Update: Partial<Database['public']['Tables']['events']['Insert']>
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          description?: string | null
+          category?: string
+          event_date: string
+          start_time?: string | null
+          end_time?: string | null
+          recurrence?: string
+          gcal_event_id?: string | null
+          gcal_calendar_id?: string | null
+          source?: string
+          color?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          description?: string | null
+          category?: string
+          event_date?: string
+          start_time?: string | null
+          end_time?: string | null
+          recurrence?: string
+          gcal_event_id?: string | null
+          gcal_calendar_id?: string | null
+          source?: string
+          color?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       habits: {
         Row: {
@@ -72,8 +143,27 @@ export interface Database {
           active: boolean
           created_at: string
         }
-        Insert: Omit<Database['public']['Tables']['habits']['Row'], 'id' | 'created_at'>
-        Update: Partial<Database['public']['Tables']['habits']['Insert']>
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          icon: string
+          color: string
+          sort_order?: number
+          active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          icon?: string
+          color?: string
+          sort_order?: number
+          active?: boolean
+          created_at?: string
+        }
+        Relationships: []
       }
       habit_logs: {
         Row: {
@@ -83,8 +173,21 @@ export interface Database {
           log_date: string
           completed: boolean
         }
-        Insert: Omit<Database['public']['Tables']['habit_logs']['Row'], 'id'>
-        Update: Partial<Database['public']['Tables']['habit_logs']['Insert']>
+        Insert: {
+          id?: string
+          habit_id: string
+          user_id: string
+          log_date: string
+          completed?: boolean
+        }
+        Update: {
+          id?: string
+          habit_id?: string
+          user_id?: string
+          log_date?: string
+          completed?: boolean
+        }
+        Relationships: []
       }
       exercises: {
         Row: {
@@ -100,8 +203,33 @@ export interface Database {
           sort_order: number
           created_at: string
         }
-        Insert: Omit<Database['public']['Tables']['exercises']['Row'], 'id' | 'created_at'>
-        Update: Partial<Database['public']['Tables']['exercises']['Insert']>
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          icon: string
+          muscle_group?: string | null
+          day_of_week: number
+          sets: number
+          reps: number
+          weight_kg: number
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          icon?: string
+          muscle_group?: string | null
+          day_of_week?: number
+          sets?: number
+          reps?: number
+          weight_kg?: number
+          sort_order?: number
+          created_at?: string
+        }
+        Relationships: []
       }
       workout_sets: {
         Row: {
@@ -114,8 +242,27 @@ export interface Database {
           weight_done: number | null
           completed: boolean
         }
-        Insert: Omit<Database['public']['Tables']['workout_sets']['Row'], 'id'>
-        Update: Partial<Database['public']['Tables']['workout_sets']['Insert']>
+        Insert: {
+          id?: string
+          exercise_id: string
+          user_id: string
+          workout_date: string
+          set_number: number
+          reps_done?: number | null
+          weight_done?: number | null
+          completed?: boolean
+        }
+        Update: {
+          id?: string
+          exercise_id?: string
+          user_id?: string
+          workout_date?: string
+          set_number?: number
+          reps_done?: number | null
+          weight_done?: number | null
+          completed?: boolean
+        }
+        Relationships: []
       }
       personal_records: {
         Row: {
@@ -126,8 +273,23 @@ export interface Database {
           reps: number | null
           recorded_at: string
         }
-        Insert: Omit<Database['public']['Tables']['personal_records']['Row'], 'id'>
-        Update: Partial<Database['public']['Tables']['personal_records']['Insert']>
+        Insert: {
+          id?: string
+          user_id: string
+          exercise_name: string
+          weight_kg: number
+          reps?: number | null
+          recorded_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          exercise_name?: string
+          weight_kg?: number
+          reps?: number | null
+          recorded_at?: string
+        }
+        Relationships: []
       }
       projects: {
         Row: {
@@ -139,13 +301,40 @@ export interface Database {
           color: string
           tags: string[]
           progress: number
-          status: 'active' | 'paused' | 'done' | 'archived'
+          status: string
           deadline: string | null
           created_at: string
           updated_at: string
         }
-        Insert: Omit<Database['public']['Tables']['projects']['Row'], 'id' | 'created_at' | 'updated_at'>
-        Update: Partial<Database['public']['Tables']['projects']['Insert']>
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          client?: string | null
+          description?: string | null
+          color?: string
+          tags?: string[]
+          progress?: number
+          status?: string
+          deadline?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          client?: string | null
+          description?: string | null
+          color?: string
+          tags?: string[]
+          progress?: number
+          status?: string
+          deadline?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       notes: {
         Row: {
@@ -158,8 +347,27 @@ export interface Database {
           created_at: string
           updated_at: string
         }
-        Insert: Omit<Database['public']['Tables']['notes']['Row'], 'id' | 'created_at' | 'updated_at'>
-        Update: Partial<Database['public']['Tables']['notes']['Insert']>
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          content?: string | null
+          tag?: string
+          pinned?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          content?: string | null
+          tag?: string
+          pinned?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       health_logs: {
         Row: {
@@ -178,8 +386,39 @@ export interface Database {
           notes: string | null
           created_at: string
         }
-        Insert: Omit<Database['public']['Tables']['health_logs']['Row'], 'id' | 'created_at'>
-        Update: Partial<Database['public']['Tables']['health_logs']['Insert']>
+        Insert: {
+          id?: string
+          user_id: string
+          log_date: string
+          water_ml?: number
+          water_goal?: number
+          sleep_hours?: number | null
+          steps?: number
+          mood?: string | null
+          mood_label?: string | null
+          energy?: number | null
+          stress?: number | null
+          motivation?: number | null
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          log_date?: string
+          water_ml?: number
+          water_goal?: number
+          sleep_hours?: number | null
+          steps?: number
+          mood?: string | null
+          mood_label?: string | null
+          energy?: number | null
+          stress?: number | null
+          motivation?: number | null
+          notes?: string | null
+          created_at?: string
+        }
+        Relationships: []
       }
       focus_sessions: {
         Row: {
@@ -187,15 +426,48 @@ export interface Database {
           user_id: string
           task_id: string | null
           task_label: string | null
-          mode: 'focus' | 'short' | 'long'
+          mode: string
           duration_min: number
           completed: boolean
           started_at: string
           ended_at: string | null
         }
-        Insert: Omit<Database['public']['Tables']['focus_sessions']['Row'], 'id'>
-        Update: Partial<Database['public']['Tables']['focus_sessions']['Insert']>
+        Insert: {
+          id?: string
+          user_id: string
+          task_id?: string | null
+          task_label?: string | null
+          mode?: string
+          duration_min: number
+          completed?: boolean
+          started_at?: string
+          ended_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          task_id?: string | null
+          task_label?: string | null
+          mode?: string
+          duration_min?: number
+          completed?: boolean
+          started_at?: string
+          ended_at?: string | null
+        }
+        Relationships: []
       }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
     }
   }
 }
