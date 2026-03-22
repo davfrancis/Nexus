@@ -64,7 +64,7 @@ export function useFocus() {
     const { data } = await supabase.from('focus_sessions').insert({
       user_id: user.id, task_label: taskLabel, duration_min: durationMin, task_id: taskId || null,
       mode: 'focus', completed: true, ended_at: new Date().toISOString()
-    }).select().single()
+    } as any).select().single()
     if (data) setSessions(prev => [data, ...prev])
     return data
   }

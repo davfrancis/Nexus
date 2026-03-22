@@ -49,7 +49,7 @@ export function useExercises() {
         reps: fields.reps || 10,
         weight_kg: fields.weight_kg || 0,
         sort_order: dayExercises.length,
-      })
+      } as any)
       .select()
       .single()
     if (data) setExercises(prev => [...prev, data])
@@ -77,7 +77,7 @@ export function useExercises() {
     } else {
       const { data } = await supabase
         .from('workout_sets')
-        .insert({ user_id: user.id, exercise_id: exerciseId, workout_date: today, set_number: setNumber, reps_done: repsDone, weight_done: weightDone, completed: true })
+        .insert({ user_id: user.id, exercise_id: exerciseId, workout_date: today, set_number: setNumber, reps_done: repsDone, weight_done: weightDone, completed: true } as any)
         .select()
         .single()
       if (data) setTodaySets(prev => [...prev, data])

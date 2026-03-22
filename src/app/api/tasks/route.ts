@@ -54,6 +54,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'invalid status' }, { status: 400 })
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await supabase
     .from('tasks')
     .insert({
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
       priority: (priority as string) || 'medium',
       status: (status as string) || 'todo',
       due_date: due_date || null,
-    })
+    } as any)
     .select()
     .single()
 

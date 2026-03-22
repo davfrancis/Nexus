@@ -40,7 +40,7 @@ export function useTasks() {
   const addTask = async (task: Omit<Task, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return null
-    const { data } = await supabase.from('tasks').insert({ ...task, user_id: user.id }).select().single()
+    const { data } = await supabase.from('tasks').insert({ ...task, user_id: user.id } as any).select().single()
     if (data) setTasks(prev => [data, ...prev])
     return data
   }

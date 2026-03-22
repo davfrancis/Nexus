@@ -34,7 +34,7 @@ export function useHabits() {
       await supabase.from('habit_logs').update({ completed: newVal }).eq('id', existing.id)
       setLogs(prev => prev.map(l => l.id === existing.id ? { ...l, completed: newVal } : l))
     } else {
-      const { data } = await supabase.from('habit_logs').insert({ habit_id: habitId, user_id: user.id, log_date: date, completed: true }).select().single()
+      const { data } = await supabase.from('habit_logs').insert({ habit_id: habitId, user_id: user.id, log_date: date, completed: true } as any).select().single()
       if (data) setLogs(prev => [...prev, data])
     }
   }
@@ -42,7 +42,7 @@ export function useHabits() {
   const addHabit = async (name: string, icon = '⭐') => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data } = await supabase.from('habits').insert({ name, icon, color: '#6366f1', user_id: user.id, sort_order: habits.length }).select().single()
+    const { data } = await supabase.from('habits').insert({ name, icon, color: '#6366f1', user_id: user.id, sort_order: habits.length } as any).select().single()
     if (data) setHabits(prev => [...prev, data])
   }
 

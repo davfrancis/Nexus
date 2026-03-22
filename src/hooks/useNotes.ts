@@ -32,7 +32,7 @@ export function useNotes() {
         content: fields.content || null,
         tag: fields.tag || 'general',
         pinned: false,
-      })
+      } as any)
       .select()
       .single()
     if (data) setNotes(prev => [data, ...prev])

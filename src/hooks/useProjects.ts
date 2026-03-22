@@ -43,7 +43,7 @@ export function useProjects() {
         deadline: fields.deadline || null,
         tags: fields.tags || [],
         progress: 0,
-      })
+      } as any)
       .select()
       .single()
     if (data) setProjects(prev => [data, ...prev])
