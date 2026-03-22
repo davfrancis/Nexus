@@ -1,6 +1,7 @@
 // src/app/api/tasks/[id]/route.ts
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 const ALLOWED_UPDATE_FIELDS = ['title', 'description', 'category', 'priority', 'status', 'due_date']
 const VALID_CATEGORIES = ['work', 'personal', 'gym', 'study', 'urgent']
@@ -49,7 +50,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: 'invalid status' }, { status: 400 })
   }
 
-  const { data, error } = await supabase
+  const admin = createAdminClient()
+
+  const { data, error } = await admin
     .from('tasks')
     .update(updates)
     .eq('id', id)
@@ -67,7 +70,9 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { error } = await supabase
+  const admin = createAdminClient()
+
+  const { error } = await admin
     .from('tasks')
     .delete()
     .eq('id', id)

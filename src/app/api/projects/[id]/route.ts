@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -12,7 +13,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const updates: Record<string, unknown> = {}
   for (const k of allowed) if (k in body) updates[k] = body[k]
 
-  const { data } = await supabase.from('projects').update(updates as any).eq('id', id).eq('user_id', user.id).select().single()
+  const admin = createAdminClient()
+
+  const { data } = await admin.from('projects').update(updates).eq('id', id).eq('user_id', user.id).select().single()
   return NextResponse.json({ project: data })
 }
 
@@ -22,6 +25,8 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  await supabase.from('projects').delete().eq('id', id).eq('user_id', user.id)
+  const admin = createAdminClient()
+
+  await admin.from('projects').delete().eq('id', id).eq('user_id', user.id)
   return NextResponse.json({ success: true })
 }

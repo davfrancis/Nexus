@@ -3,6 +3,7 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import {
   listCalendarEvents,
   parseGCalEvent,
@@ -18,8 +19,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Busca tokens Google salvos no profile
-  const { data: profile } = await supabase
+  const { data: profile } = await admin
     .from('profiles')
     .select('google_access_token, google_refresh_token, google_token_expiry')
     .eq('id', user.id)
@@ -41,14 +44,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Token refresh failed' }, { status: 400 })
     }
     accessToken = refreshed.access_token
-    await supabase.from('profiles').update({
+    await admin.from('profiles').update({
       google_access_token: accessToken,
       google_token_expiry: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
     }).eq('id', user.id)
   }
 
   // Define janela de sincronização (mês atual + próximo)
-  const { searchParams } = new URL(req.url)
   const now = new Date()
   const timeMin = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
   const timeMax = new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString()
@@ -64,7 +66,7 @@ export async function POST(req: Request) {
     }))
 
     if (rows.length > 0) {
-      const { error: upsertError } = await supabase
+      const { error: upsertError } = await admin
         .from('events')
         .upsert(rows, {
           onConflict: 'gcal_event_id',

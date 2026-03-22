@@ -1,6 +1,7 @@
 // src/app/api/tasks/route.ts
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 const VALID_CATEGORIES = ['work', 'personal', 'gym', 'study', 'urgent']
 const VALID_PRIORITIES = ['high', 'medium', 'low']
@@ -11,7 +12,8 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data, error } = await supabase
+  const admin = createAdminClient()
+  const { data, error } = await admin
     .from('tasks')
     .select('*')
     .eq('user_id', user.id)
@@ -54,24 +56,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'invalid status' }, { status: 400 })
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await supabase
+  const admin = createAdminClient()
+  const { data, error } = await admin
     .from('tasks')
     .insert({
       user_id: user.id,
-      title: title.trim(),
-      description: description || null,
+      title: (title as string).trim(),
+      description: (description as string | null) || null,
       category: (category as string) || 'work',
       priority: (priority as string) || 'medium',
       status: (status as string) || 'todo',
-      due_date: due_date || null,
-    } as any)
+      due_date: (due_date as string | null) || null,
+    })
     .select()
     .single()
 
-  if (error) {
-    console.error('Task insert error:', JSON.stringify(error))
-    return NextResponse.json({ error: 'Failed to create task', detail: error.message, code: error.code }, { status: 500 })
-  }
+  if (error) return NextResponse.json({ error: 'Failed to create task' }, { status: 500 })
   return NextResponse.json({ task: data })
 }

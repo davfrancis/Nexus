@@ -1,6 +1,7 @@
 // src/app/api/calendar/events/route.ts
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createCalendarEvent } from '@/lib/google-calendar'
 
 const VALID_CATEGORIES = ['work', 'personal', 'gym', 'study', 'urgent']
@@ -20,7 +21,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'invalid month format' }, { status: 400 })
   }
 
-  const { data, error } = await supabase
+  const admin = createAdminClient()
+
+  const { data, error } = await admin
     .from('events')
     .select('*')
     .eq('user_id', user.id)
@@ -84,16 +87,17 @@ export async function POST(req: Request) {
     source: 'local' as const,
   }
 
-  const { data: saved, error } = await supabase
+  const admin = createAdminClient()
+
+  const { data: saved, error } = await admin
     .from('events')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .insert(insertRow as any)
+    .insert(insertRow)
     .select()
     .single()
 
   if (error || !saved) return NextResponse.json({ error: 'Failed to create event' }, { status: 500 })
 
-  const { data: profile } = await supabase
+  const { data: profile } = await admin
     .from('profiles')
     .select('google_access_token')
     .eq('id', user.id)
@@ -107,7 +111,7 @@ export async function POST(req: Request) {
       startTime: start_time as string, endTime: (end_time || start_time) as string,
     })
     if (gcalResult) {
-      await supabase
+      await admin
         .from('events')
         .update({ gcal_event_id: gcalResult.gcalEventId, source: 'gcal' })
         .eq('id', saved.id)
