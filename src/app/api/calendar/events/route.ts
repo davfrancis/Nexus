@@ -72,19 +72,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'invalid recurrence' }, { status: 400 })
   }
 
+  const insertRow = {
+    user_id: user.id,
+    title: (title as string).trim(),
+    description: (description as string | null) || null,
+    event_date: event_date as string,
+    start_time: (start_time as string | null) || null,
+    end_time: (end_time as string | null) || null,
+    category: (category as string) || 'work',
+    recurrence: (recurrence as string) || 'none',
+    source: 'local' as const,
+  }
+
   const { data: saved, error } = await supabase
     .from('events')
-    .insert({
-      user_id: user.id,
-      title: (title as string).trim(),
-      description: description || null,
-      event_date: event_date as string,
-      start_time: start_time || null,
-      end_time: end_time || null,
-      category: (category as string) || 'work',
-      recurrence: (recurrence as string) || 'none',
-      source: 'local',
-    })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .insert(insertRow as any)
     .select()
     .single()
 
