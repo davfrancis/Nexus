@@ -1,0 +1,45 @@
+/* src/app/globals.css */
+:root {
+  --bg: #0C0C0F;
+  --bg2: #131318;
+  --bg3: #1A1A22;
+  --bg4: #22222E;
+  --border: rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.12);
+  --text: #F0EFF8;
+  --text2: #9490B0;
+  --text3: #5E5A78;
+  --accent: #7C6FD4;
+  --accent2: #9B8FE8;
+  --green: #3ECFA0;
+  --red: #F05C5C;
+  --amber: #F0A03C;
+  --blue: #4A9EE8;
+  --pink: #E878B8;
+  --font-d: 'Syne', sans-serif;
+  --font-b: 'DM Sans', sans-serif;
+  --font-m: 'DM Mono', monospace;
+  --r: 12px;
+  --r2: 8px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-b);
+  height: 100%;
+}
+
+/* Scrollbar global */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 4px; }
+* { scrollbar-width: thin; scrollbar-color: var(--bg4) transparent; }
+
+/* Selection */
+::selection { background: rgba(124,111,212,0.3); }
+
+/* Focus visible */
+:focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; border-radius: var(--r2); }
