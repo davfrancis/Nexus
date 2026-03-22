@@ -26,19 +26,23 @@ export function useHabits() {
   useEffect(() => { fetchAll() }, [fetchAll])
 
   const toggleHabit = async (habitId: string, date: string = today) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
     const existing = logs.find(l => l.habit_id === habitId && l.log_date === date)
     if (existing) {
       const newVal = !existing.completed
       await supabase.from('habit_logs').update({ completed: newVal }).eq('id', existing.id)
       setLogs(prev => prev.map(l => l.id === existing.id ? { ...l, completed: newVal } : l))
     } else {
-      const { data } = await supabase.from('habit_logs').insert({ habit_id: habitId, log_date: date, completed: true }).select().single()
+      const { data } = await supabase.from('habit_logs').insert({ habit_id: habitId, user_id: user.id, log_date: date, completed: true }).select().single()
       if (data) setLogs(prev => [...prev, data])
     }
   }
 
   const addHabit = async (name: string, icon = '⭐') => {
-    const { data } = await supabase.from('habits').insert({ name, icon, sort_order: habits.length }).select().single()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data } = await supabase.from('habits').insert({ name, icon, color: '#6366f1', user_id: user.id, sort_order: habits.length }).select().single()
     if (data) setHabits(prev => [...prev, data])
   }
 

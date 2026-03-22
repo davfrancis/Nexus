@@ -38,7 +38,9 @@ export function useTasks() {
   }, [fetchTasks, supabase])
 
   const addTask = async (task: Omit<Task, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
-    const { data } = await supabase.from('tasks').insert(task).select().single()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+    const { data } = await supabase.from('tasks').insert({ ...task, user_id: user.id }).select().single()
     if (data) setTasks(prev => [data, ...prev])
     return data
   }
@@ -58,7 +60,8 @@ export function useTasks() {
     const task = tasks.find(t => t.id === id)
     if (!task) return
     const next = { todo: 'doing', doing: 'done', done: 'todo' } as const
-    await updateTask(id, { status: next[task.status] })
+    const status = task.status as keyof typeof next
+    await updateTask(id, { status: next[status] })
   }
 
   return { tasks, loading, addTask, updateTask, deleteTask, moveTask, refresh: fetchTasks }

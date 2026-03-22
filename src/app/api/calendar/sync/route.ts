@@ -10,7 +10,7 @@ import {
 } from '@/lib/google-calendar'
 
 export async function POST(req: Request) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   // Verifica auth
   const { data: { user }, error: authError } = await supabase.auth.getUser()

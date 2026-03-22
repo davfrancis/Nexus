@@ -23,7 +23,9 @@ export function useHealth() {
   useEffect(() => { fetch() }, [fetch])
 
   const upsertToday = async (updates: Partial<HealthLog>) => {
-    const { data } = await supabase.from('health_logs').upsert({ log_date: today, ...updates }, { onConflict: 'user_id,log_date' }).select().single()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+    const { data } = await supabase.from('health_logs').upsert({ user_id: user.id, log_date: today, ...updates }, { onConflict: 'user_id,log_date' }).select().single()
     if (data) { setTodayLog(data); setWeekLogs(prev => [data, ...prev.filter(l => l.log_date !== today)]) }
     return data
   }
@@ -57,8 +59,10 @@ export function useFocus() {
   useEffect(() => { fetchToday() }, [fetchToday])
 
   const saveSession = async (taskLabel: string, durationMin: number, taskId?: string) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
     const { data } = await supabase.from('focus_sessions').insert({
-      task_label: taskLabel, duration_min: durationMin, task_id: taskId || null,
+      user_id: user.id, task_label: taskLabel, duration_min: durationMin, task_id: taskId || null,
       mode: 'focus', completed: true, ended_at: new Date().toISOString()
     }).select().single()
     if (data) setSessions(prev => [data, ...prev])
