@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useExercises } from '@/hooks/useExercises'
+import ModalPortal from '@/components/ModalPortal'
 
 const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 const MUSCLE_GROUPS = ['peito', 'costas', 'ombros', 'bíceps', 'tríceps', 'pernas', 'glúteos', 'abdômen', 'cardio']
@@ -145,8 +146,7 @@ export default function AcademiaPage() {
       )}
 
       {showModal && (
-        <div onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 1000, overflowY: 'auto' }}>
+        <ModalPortal onClose={() => setShowModal(false)}>
           <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 12, padding: 28, width: 460, maxWidth: 'calc(100% - 32px)', margin: '40px auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontFamily: 'var(--font-d)', fontSize: 18, fontWeight: 700 }}>Novo Exercício</h2>
@@ -207,7 +207,7 @@ export default function AcademiaPage() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </div>
   )

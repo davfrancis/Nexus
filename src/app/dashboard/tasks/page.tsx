@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useTasks } from '@/hooks/useTasks'
 import type { Task } from '@/types/database'
+import ModalPortal from '@/components/ModalPortal'
 
 const COLS = [
   { key: 'todo',  label: 'A Fazer',   color: 'var(--text3)' },
@@ -132,8 +133,7 @@ export default function TasksPage() {
       )}
 
       {showModal && (
-        <div onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 1000, overflowY: 'auto' }}>
+        <ModalPortal onClose={() => setShowModal(false)}>
           <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 12, padding: 28, width: 480, maxWidth: 'calc(100% - 32px)', margin: '40px auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontFamily: 'var(--font-d)', fontSize: 18, fontWeight: 700 }}>{editing ? 'Editar Tarefa' : 'Nova Tarefa'}</h2>
@@ -178,7 +178,7 @@ export default function TasksPage() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </div>
   )

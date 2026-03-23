@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useProjects } from '@/hooks/useProjects'
+import ModalPortal from '@/components/ModalPortal'
 import type { Project } from '@/types/database'
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -132,8 +133,7 @@ export default function ProjetosPage() {
       )}
 
       {showModal && (
-        <div onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 1000, overflowY: 'auto' }}>
+        <ModalPortal onClose={() => setShowModal(false)}>
           <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 12, padding: 28, width: 500, maxWidth: 'calc(100% - 32px)', margin: '40px auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontFamily: 'var(--font-d)', fontSize: 18, fontWeight: 700 }}>{editing ? 'Editar Projeto' : 'Novo Projeto'}</h2>
@@ -195,7 +195,7 @@ export default function ProjetosPage() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </div>
   )
