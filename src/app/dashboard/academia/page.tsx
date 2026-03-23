@@ -40,7 +40,7 @@ export default function AcademiaPage() {
   }, 0)
 
   return (
-    <div style={{ padding: 28 }}>
+    <div className="page-enter" style={{ padding: 28 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 26, fontWeight: 700, letterSpacing: -.5 }}>Academia</h1>
@@ -71,7 +71,14 @@ export default function AcademiaPage() {
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text3)' }}>Carregando...</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {[0,1,2].map(i => (
+            <div key={i} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
+              <div className="skeleton" style={{ height: 14, width: '40%', marginBottom: 12 }} />
+              {[0,1].map(j => <div key={j} className="skeleton" style={{ height: 44, borderRadius: 8, marginBottom: 8 }} />)}
+            </div>
+          ))}
+        </div>
       ) : dayExercises.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 60, color: 'var(--text3)', fontSize: 13 }}>
           Nenhum exercício para {DAYS[selectedDay]}. Adicione um!

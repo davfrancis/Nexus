@@ -43,3 +43,46 @@ html, body {
 
 /* Focus visible */
 :focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; border-radius: var(--r2); }
+
+/* Skeleton loading shimmer */
+@keyframes skeleton-shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--bg3) 25%, var(--bg4) 50%, var(--bg3) 75%);
+  background-size: 800px 100%;
+  animation: skeleton-shimmer 1.4s infinite;
+  border-radius: 6px;
+}
+
+/* Page fade-in */
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter { animation: page-in .22s ease both; }
+
+/* Card hover lift */
+.card-hover {
+  transition: border-color .2s, box-shadow .2s, transform .15s;
+}
+.card-hover:hover {
+  border-color: var(--border2) !important;
+  box-shadow: 0 6px 24px rgba(0,0,0,.3);
+  transform: translateY(-1px);
+}
+
+/* Pulse dot */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: .4; transform: scale(.75); }
+}
+.pulse-dot { animation: pulse-dot 2s infinite; }
+
+/* Bounce */
+@keyframes bounce-y {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-3px); }
+}
+.bounce-y { animation: bounce-y 1.5s infinite; }

@@ -1,7 +1,7 @@
 // src/components/DashboardClient.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import type { Task, Event, Habit, HabitLog, HealthLog, FocusSession } from '@/types/database'
 
@@ -38,6 +38,14 @@ const QUOTES = [
 export default function DashboardClient({ initialData }: Props) {
   const { tasks, todayEvents, habits, habitLogs, healthLog, focusSessions, userName, dateLabel, greeting, today } = initialData
   const [mood, setMood] = useState<string | null>(healthLog?.mood || null)
+  const [clock, setClock] = useState(() => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setClock(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))
+    }, 10000)
+    return () => clearInterval(timer)
+  }, [])
 
   const doneTasks   = tasks.filter(t => t.status === 'done').length
   const taskPct     = tasks.length ? Math.round(doneTasks / tasks.length * 100) : 0
@@ -72,7 +80,7 @@ export default function DashboardClient({ initialData }: Props) {
   const dayLabels = ['D','S','T','Q','Q','S','S']
 
   return (
-    <div style={{ padding: 28 }}>
+    <div className="page-enter" style={{ padding: 28 }}>
       {/* Topbar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
@@ -82,8 +90,8 @@ export default function DashboardClient({ initialData }: Props) {
           <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 4, textTransform: 'capitalize' }}>{dateLabel}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', padding: '6px 14px', borderRadius: 100, fontSize: 13, color: 'var(--text2)', fontFamily: 'var(--font-m)' }} id="clock">
-            {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+          <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', padding: '6px 14px', borderRadius: 100, fontSize: 13, color: 'var(--text2)', fontFamily: 'var(--font-m)' }}>
+            {clock}
           </div>
           <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), var(--pink))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-d)', fontWeight: 700, fontSize: 13 }}>
             {userName.slice(0, 2).toUpperCase()}
@@ -94,7 +102,7 @@ export default function DashboardClient({ initialData }: Props) {
       {/* Banner */}
       <div style={{ background: 'rgba(124,111,212,.1)', border: '1px solid rgba(124,111,212,.3)', borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)', animation: 'pulse 2s infinite' }} />
+          <div className="pulse-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)' }} />
           <div>
             <div style={{ fontSize: 13, fontWeight: 500 }}>Modo Produtivo Ativo</div>
             <div style={{ fontSize: 11, color: 'var(--text3)' }}>
@@ -114,7 +122,7 @@ export default function DashboardClient({ initialData }: Props) {
         <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 12, padding: 18 }}>
           <div style={{ fontSize: 11, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, fontFamily: 'var(--font-d)', fontWeight: 600 }}>Streak</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 24, animation: 'bounce 1.5s infinite', display: 'inline-block' }}>🔥</span>
+            <span className="bounce-y" style={{ fontSize: 24, display: 'inline-block' }}>🔥</span>
             <span style={{ fontFamily: 'var(--font-d)', fontSize: 28, fontWeight: 700, color: 'var(--amber)' }}>{maxStreak}</span>
           </div>
           <div style={{ fontSize: 12, color: 'var(--text3)' }}>dias consecutivos</div>
@@ -234,10 +242,6 @@ export default function DashboardClient({ initialData }: Props) {
         </div>
       </div>
 
-      <style>{`
-        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
-        @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
-      `}</style>
     </div>
   )
 }

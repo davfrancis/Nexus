@@ -48,7 +48,7 @@ export default function ProjetosPage() {
   const done = projects.filter(p => p.status === 'done').length
 
   return (
-    <div style={{ padding: 28 }}>
+    <div className="page-enter" style={{ padding: 28 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 26, fontWeight: 700, letterSpacing: -.5 }}>Projetos</h1>
@@ -69,7 +69,15 @@ export default function ProjetosPage() {
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text3)' }}>Carregando...</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+          {[0,1,2].map(i => (
+            <div key={i} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 12, padding: 20 }}>
+              <div className="skeleton" style={{ height: 16, width: '70%', marginBottom: 10 }} />
+              <div className="skeleton" style={{ height: 12, width: '90%', marginBottom: 16 }} />
+              <div className="skeleton" style={{ height: 6, borderRadius: 100 }} />
+            </div>
+          ))}
+        </div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 60, color: 'var(--text3)', fontSize: 13 }}>
           {filter !== 'all' ? 'Nenhum projeto com esse status.' : 'Nenhum projeto ainda. Crie o primeiro!'}

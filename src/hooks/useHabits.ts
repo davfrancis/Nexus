@@ -23,12 +23,20 @@ export function useHabits() {
   useEffect(() => { fetchAll() }, [fetchAll])
 
   const toggleHabit = async (habitId: string, date: string = today) => {
+    // Optimistic update
+    const currentlyDone = logs.some(l => l.habit_id === habitId && l.log_date === date && l.completed)
+    setLogs(prev => {
+      const exists = prev.find(l => l.habit_id === habitId && l.log_date === date)
+      if (exists) return prev.map(l => l.habit_id === habitId && l.log_date === date ? { ...l, completed: !currentlyDone } : l)
+      return [...prev, { id: 'optimistic', habit_id: habitId, log_date: date, completed: true, user_id: '' } as HabitLog]
+    })
+
     const res = await fetch('/api/habit-logs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ habit_id: habitId, log_date: date }),
     })
-    if (!res.ok) return
+    if (!res.ok) { fetchAll(); return } // revert on error
     const json = await res.json()
     if (json.log) {
       setLogs(prev => {

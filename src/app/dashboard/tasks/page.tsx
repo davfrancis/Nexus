@@ -50,7 +50,7 @@ export default function TasksPage() {
   })
 
   return (
-    <div style={{ padding: 28 }}>
+    <div className="page-enter" style={{ padding: 28 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 26, fontWeight: 700, letterSpacing: -.5 }}>Tarefas</h1>
@@ -72,7 +72,14 @@ export default function TasksPage() {
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text3)' }}>Carregando...</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+          {[0,1,2].map(i => (
+            <div key={i} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
+              <div className="skeleton" style={{ height: 14, width: '60%', marginBottom: 16 }} />
+              {[0,1,2].map(j => <div key={j} className="skeleton" style={{ height: 52, borderRadius: 10, marginBottom: 8 }} />)}
+            </div>
+          ))}
+        </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
           {COLS.map(col => {

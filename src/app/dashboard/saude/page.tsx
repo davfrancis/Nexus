@@ -62,7 +62,7 @@ export default function SaudePage() {
   const waterPct = Math.min((waterMl / waterGoal) * 100, 100)
 
   return (
-    <div style={{ padding: 28 }}>
+    <div className="page-enter" style={{ padding: 28 }}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 26, fontWeight: 700, letterSpacing: -.5 }}>Saúde</h1>
         <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 4 }}>Acompanhe seu bem-estar diário</div>

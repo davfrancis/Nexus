@@ -33,7 +33,7 @@ export default function HabitosPage() {
   }
 
   return (
-    <div style={{ padding: 28 }}>
+    <div className="page-enter" style={{ padding: 28 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 26, fontWeight: 700, letterSpacing: -.5 }}>Hábitos</h1>
@@ -48,7 +48,17 @@ export default function HabitosPage() {
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text3)' }}>Carregando...</div>
+        <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 12, padding: 20 }}>
+          {[0,1,2,3].map(i => (
+            <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+              <div className="skeleton" style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0 }} />
+              <div className="skeleton" style={{ height: 13, flex: 1 }} />
+              <div style={{ display: 'flex', gap: 4 }}>
+                {[0,1,2,3,4,5,6].map(j => <div key={j} className="skeleton" style={{ width: 28, height: 28, borderRadius: '50%' }} />)}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <>
           {/* Progress bar */}

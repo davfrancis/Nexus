@@ -51,7 +51,7 @@ export default function NotasPage() {
   const unpinned = filtered.filter(n => !n.pinned)
 
   return (
-    <div style={{ padding: 28 }}>
+    <div className="page-enter" style={{ padding: 28 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 26, fontWeight: 700, letterSpacing: -.5 }}>Notas</h1>
@@ -74,7 +74,15 @@ export default function NotasPage() {
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text3)' }}>Carregando...</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
+          {[0,1,2,3].map(i => (
+            <div key={i} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 12, padding: 18 }}>
+              <div className="skeleton" style={{ height: 14, width: '60%', marginBottom: 12 }} />
+              <div className="skeleton" style={{ height: 11, width: '100%', marginBottom: 6 }} />
+              <div className="skeleton" style={{ height: 11, width: '80%' }} />
+            </div>
+          ))}
+        </div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 60, color: 'var(--text3)', fontSize: 13 }}>
           {search || filter !== 'all' ? 'Nenhuma nota encontrada.' : 'Nenhuma nota ainda. Crie a primeira!'}

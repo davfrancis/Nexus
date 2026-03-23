@@ -73,7 +73,7 @@ export default function FocoPage() {
   const secs = (timeLeft % 60).toString().padStart(2, '0')
 
   return (
-    <div style={{ padding: 28 }}>
+    <div className="page-enter" style={{ padding: 28 }}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 26, fontWeight: 700, letterSpacing: -.5 }}>Foco</h1>
         <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 4 }}>

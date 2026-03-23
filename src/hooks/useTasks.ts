@@ -43,12 +43,15 @@ export function useTasks() {
   }
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
+    // Optimistic update
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t))
+
     const res = await fetch(`/api/tasks/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
     })
-    if (!res.ok) return null
+    if (!res.ok) { fetchTasks(); return null } // revert on error
     const json = await res.json()
     if (json.task) setTasks(prev => prev.map(t => t.id === id ? json.task : t))
     return json.task
