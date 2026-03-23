@@ -36,9 +36,30 @@ const QUOTES = [
 ]
 
 export default function DashboardClient({ initialData }: Props) {
-  const { tasks, todayEvents, habits, habitLogs, healthLog, focusSessions, userName, dateLabel, greeting, today } = initialData
-  const [mood, setMood] = useState<string | null>(healthLog?.mood || null)
+  const { dateLabel, greeting, today } = initialData
+  const [liveData, setLiveData] = useState(initialData)
+  const [mood, setMood] = useState<string | null>(initialData.healthLog?.mood || null)
   const [clock, setClock] = useState(() => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))
+
+  const { tasks, todayEvents, habits, habitLogs, focusSessions, userName } = liveData
+
+  const refresh = async () => {
+    const res = await fetch('/api/dashboard')
+    if (res.ok) {
+      const json = await res.json()
+      setLiveData(prev => ({ ...prev, ...json }))
+    }
+  }
+
+  useEffect(() => {
+    refresh()
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') refresh()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [])
 
   useEffect(() => {
     const timer = setInterval(() => {
