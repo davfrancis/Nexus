@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import type { Task, Event, Habit, HabitLog, HealthLog, FocusSession } from '@/types/database'
 
 interface Props {
@@ -40,6 +41,7 @@ export default function DashboardClient({ initialData }: Props) {
   const [liveData, setLiveData] = useState(initialData)
   const [mood, setMood] = useState<string | null>(initialData.healthLog?.mood || null)
   const [clock, setClock] = useState(() => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))
+  const pathname = usePathname()
 
   const { tasks, habits, habitLogs, focusSessions, userName } = liveData
 
@@ -51,9 +53,13 @@ export default function DashboardClient({ initialData }: Props) {
     }
   }
 
+  // Atualiza sempre que navegar de volta para o dashboard
   useEffect(() => {
     refresh()
+  }, [pathname])
 
+  // Atualiza quando volta para a aba do browser
+  useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') refresh()
     }
