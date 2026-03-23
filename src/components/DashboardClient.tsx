@@ -41,7 +41,7 @@ export default function DashboardClient({ initialData }: Props) {
   const [mood, setMood] = useState<string | null>(initialData.healthLog?.mood || null)
   const [clock, setClock] = useState(() => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))
 
-  const { tasks, todayEvents, habits, habitLogs, focusSessions, userName } = liveData
+  const { tasks, habits, habitLogs, focusSessions, userName } = liveData
 
   const refresh = async () => {
     const res = await fetch('/api/dashboard')
@@ -68,16 +68,19 @@ export default function DashboardClient({ initialData }: Props) {
     return () => clearInterval(timer)
   }, [])
 
-  const doneTasks   = tasks.filter(t => t.status === 'done').length
-  const taskPct     = tasks.length ? Math.round(doneTasks / tasks.length * 100) : 0
-  const todayIdx    = new Date().getDay()
-  const doneHabits  = habits.filter(h => habitLogs.some(l => l.habit_id === h.id && l.log_date === today && l.completed)).length
-  const habitPct    = habits.length ? Math.round(doneHabits / habits.length * 100) : 0
-  const maxStreak   = habits.length ? Math.max(...habits.map(h => habitLogs.filter(l => l.habit_id === h.id && l.completed).length)) : 0
+  const doneTasks    = tasks.filter(t => t.status === 'done').length
+  const taskPct      = tasks.length ? Math.round(doneTasks / tasks.length * 100) : 0
+  const doneHabits   = habits.filter(h => habitLogs.some(l => l.habit_id === h.id && l.log_date === today && l.completed)).length
+  const habitPct     = habits.length ? Math.round(doneHabits / habits.length * 100) : 0
+  const maxStreak    = habits.length ? Math.max(...habits.map(h => habitLogs.filter(l => l.habit_id === h.id && l.completed).length)) : 0
   const todayPomodoros = focusSessions.length
-  const focusMins  = focusSessions.reduce((a, s) => a + s.duration_min, 0)
-  const nextEvent   = todayEvents.find(e => (e.start_time || '00:00') >= new Date().toTimeString().slice(0, 5)) || todayEvents[0]
-  const quote       = QUOTES[new Date().getDate() % QUOTES.length]
+  const focusMins    = focusSessions.reduce((a, s) => a + s.duration_min, 0)
+  const nowTime      = new Date().toTimeString().slice(0, 5)
+  const todayEvents  = liveData.todayEvents.filter(e => e.event_date === today)
+  const nextEvent    = liveData.todayEvents.find(e =>
+    e.event_date === today ? (e.start_time || '00:00') >= nowTime : true
+  ) || liveData.todayEvents[0]
+  const quote        = QUOTES[new Date().getDate() % QUOTES.length]
 
   const card = (content: React.ReactNode, style: React.CSSProperties = {}) => (
     <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 12, padding: 20, ...style }}>

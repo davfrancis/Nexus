@@ -20,7 +20,7 @@ export default async function DashboardPage() {
     { data: profile },
   ] = await Promise.all([
     supabase.from('tasks').select('*').eq('user_id', user!.id).order('created_at', { ascending: false }),
-    supabase.from('events').select('*').eq('user_id', user!.id).eq('event_date', today).order('start_time'),
+    supabase.from('events').select('*').eq('user_id', user!.id).gte('event_date', today).order('event_date').order('start_time').limit(20),
     supabase.from('habits').select('*').eq('user_id', user!.id).eq('active', true).order('sort_order'),
     supabase.from('habit_logs').select('*').eq('user_id', user!.id).gte('log_date', format(new Date(Date.now() - 6 * 86400000), 'yyyy-MM-dd')),
     supabase.from('health_logs').select('*').eq('user_id', user!.id).eq('log_date', today).maybeSingle(),

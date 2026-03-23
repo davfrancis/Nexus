@@ -22,7 +22,7 @@ export async function GET() {
     { data: profile },
   ] = await Promise.all([
     admin.from('tasks').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-    admin.from('events').select('*').eq('user_id', user.id).eq('event_date', today).order('start_time'),
+    admin.from('events').select('*').eq('user_id', user.id).gte('event_date', today).order('event_date').order('start_time').limit(20),
     admin.from('habits').select('*').eq('user_id', user.id).eq('active', true).order('sort_order'),
     admin.from('habit_logs').select('*').eq('user_id', user.id).gte('log_date', weekAgo),
     admin.from('health_logs').select('*').eq('user_id', user.id).eq('log_date', today).maybeSingle(),
