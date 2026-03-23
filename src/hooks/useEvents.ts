@@ -1,10 +1,7 @@
 // src/hooks/useEvents.ts
-// Hook de eventos com sincronização Google Calendar
-
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import type { Event } from '@/types/database'
 
 export function useEvents(month?: string) {
@@ -12,33 +9,22 @@ export function useEvents(month?: string) {
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [lastSync, setLastSync] = useState<Date | null>(null)
-  const supabase = createClient()
 
   const currentMonth = month || new Date().toISOString().slice(0, 7)
 
   const fetchEvents = useCallback(async () => {
-    const [year, mon] = currentMonth.split('-')
-    const { data } = await supabase
-      .from('events')
-      .select('*')
-      .gte('event_date', `${currentMonth}-01`)
-      .lte('event_date', `${year}-${mon}-31`)
-      .order('event_date')
-      .order('start_time')
-    if (data) setEvents(data)
+    const res = await fetch(`/api/calendar/events?month=${currentMonth}`)
+    if (res.ok) {
+      const json = await res.json()
+      setEvents(json.events || [])
+    }
     setLoading(false)
-  }, [supabase, currentMonth])
+  }, [currentMonth])
 
   useEffect(() => {
     fetchEvents()
-    const channel = supabase
-      .channel('events_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, fetchEvents)
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [fetchEvents, supabase])
+  }, [fetchEvents])
 
-  // Sync com Google Calendar
   const syncWithGoogle = async () => {
     setSyncing(true)
     try {
@@ -68,23 +54,25 @@ export function useEvents(month?: string) {
     })
     const data = await res.json()
     if (data.event) {
-      setEvents(prev => [...prev, data.event].sort((a, b) => a.event_date.localeCompare(b.event_date)))
+      setEvents(prev => [...prev, data.event].sort((a, b) => a.event_date.localeCompare(b.event_date) || (a.start_time || '').localeCompare(b.start_time || '')))
     }
     return data
   }
 
   const updateEvent = async (id: string, updates: Partial<Event>) => {
-    const { data } = await supabase.from('events').update(updates).eq('id', id).select().single()
-    if (data) setEvents(prev => prev.map(e => e.id === id ? data : e))
-    return data
+    const res = await fetch(`/api/calendar/events/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    })
+    const data = await res.json()
+    if (data.event) setEvents(prev => prev.map(e => e.id === id ? data.event : e))
+    return data.event
   }
 
   const deleteEvent = async (id: string) => {
-    const event = events.find(e => e.id === id)
-    await supabase.from('events').delete().eq('id', id)
+    await fetch(`/api/calendar/events/${id}`, { method: 'DELETE' })
     setEvents(prev => prev.filter(e => e.id !== id))
-    // Nota: para deletar do GCal tbm, chamar a API de deleção
-    return event
   }
 
   const getEventsForDate = (date: string) =>
