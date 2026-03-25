@@ -8,7 +8,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const updates = await req.json()
+  const body = await req.json()
+  const allowed = ['title', 'description', 'event_date', 'start_time', 'end_time', 'category', 'recurrence', 'google_event_id']
+  const updates: Record<string, unknown> = {}
+  for (const k of allowed) if (k in body) updates[k] = body[k]
+  if (Object.keys(updates).length === 0)
+    return NextResponse.json({ error: 'No valid fields' }, { status: 400 })
+
   const admin = createAdminClient()
 
   const { data, error } = await admin

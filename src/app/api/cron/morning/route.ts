@@ -3,8 +3,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { sendTelegram } from '@/lib/telegram'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { verifyCronAuth } from '@/lib/cron-auth'
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!verifyCronAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const admin = createAdminClient()
   const today = new Date().toISOString().slice(0, 10)
   const dow = new Date().getDay()
