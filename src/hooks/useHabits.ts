@@ -8,7 +8,7 @@ export function useHabits() {
   const [habits, setHabits] = useState<Habit[]>([])
   const [logs, setLogs] = useState<HabitLog[]>([])
   const [loading, setLoading] = useState(true)
-  const today = format(new Date(), 'yyyy-MM-dd')
+  const [today, setToday] = useState(() => format(new Date(), 'yyyy-MM-dd'))
 
   const fetchAll = useCallback(async () => {
     const res = await fetch('/api/habits')
@@ -21,6 +21,18 @@ export function useHabits() {
   }, [])
 
   useEffect(() => { fetchAll() }, [fetchAll])
+
+  // Detecta virada de dia e atualiza os dados
+  useEffect(() => {
+    const checkDay = setInterval(() => {
+      const newToday = format(new Date(), 'yyyy-MM-dd')
+      if (newToday !== today) {
+        setToday(newToday)
+        fetchAll()
+      }
+    }, 60_000)
+    return () => clearInterval(checkDay)
+  }, [today, fetchAll])
 
   const toggleHabit = async (habitId: string, date: string = today) => {
     // Optimistic update
@@ -38,13 +50,12 @@ export function useHabits() {
     })
     if (!res.ok) { fetchAll(); return } // revert on error
     const json = await res.json()
-    if (json.log) {
-      setLogs(prev => {
-        const exists = prev.find(l => l.habit_id === habitId && l.log_date === date)
-        if (exists) return prev.map(l => l.habit_id === habitId && l.log_date === date ? json.log : l)
-        return [...prev, json.log]
-      })
-    }
+    if (!json.log) { fetchAll(); return } // revert if insert failed silently
+    setLogs(prev => {
+      const exists = prev.find(l => l.habit_id === habitId && l.log_date === date)
+      if (exists) return prev.map(l => l.habit_id === habitId && l.log_date === date ? json.log : l)
+      return [...prev, json.log]
+    })
   }
 
   const addHabit = async (name: string, icon = '⭐') => {

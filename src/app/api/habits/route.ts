@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { nowBRT } from '@/lib/date'
 
 export async function GET() {
   const supabase = await createClient()
@@ -11,7 +12,7 @@ export async function GET() {
 
   const [{ data: habits }, { data: logs }] = await Promise.all([
     admin.from('habits').select('*').eq('user_id', user.id).eq('active', true).order('sort_order'),
-    admin.from('habit_logs').select('*').eq('user_id', user.id).gte('log_date', new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)),
+    admin.from('habit_logs').select('*').eq('user_id', user.id).gte('log_date', new Date(nowBRT().getTime() - 7 * 86400000).toISOString().slice(0, 10)),
   ])
 
   return NextResponse.json({ habits: habits || [], logs: logs || [] })

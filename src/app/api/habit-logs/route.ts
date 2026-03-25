@@ -16,10 +16,12 @@ export async function POST(req: Request) {
   const { data: existing } = await admin.from('habit_logs').select('*').eq('habit_id', habit_id).eq('log_date', log_date).single()
 
   if (existing) {
-    const { data } = await admin.from('habit_logs').update({ completed: !existing.completed }).eq('id', existing.id).select().single()
+    const { data, error } = await admin.from('habit_logs').update({ completed: !existing.completed }).eq('id', existing.id).select().single()
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ log: data, toggled: true })
   } else {
-    const { data } = await admin.from('habit_logs').insert({ habit_id, user_id: user.id, log_date, completed: true }).select().single()
+    const { data, error } = await admin.from('habit_logs').insert({ habit_id, user_id: user.id, log_date, completed: true }).select().single()
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ log: data, toggled: false })
   }
 }

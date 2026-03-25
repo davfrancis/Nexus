@@ -2,15 +2,20 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { format } from 'date-fns'
+import { nowBRT } from '@/lib/date'
 
-export async function GET() {
+export async function GET(req: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const admin = createAdminClient()
-  const today = format(new Date(), 'yyyy-MM-dd')
-  const weekAgo = format(new Date(Date.now() - 6 * 86400000), 'yyyy-MM-dd')
+  // Usa a data local do browser para evitar divergência de timezone (Vercel roda em UTC)
+  const { searchParams } = new URL(req.url)
+  const today = searchParams.get('date') || format(nowBRT(), 'yyyy-MM-dd')
+  const d6 = new Date(today + 'T12:00:00')
+  d6.setDate(d6.getDate() - 6)
+  const weekAgo = d6.toISOString().slice(0, 10)
 
   const [
     { data: tasks },
