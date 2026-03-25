@@ -9,12 +9,12 @@ export async function GET() {
 
   const admin = createAdminClient()
   const { data } = await admin
-    .from('notes')
+    .from('folders')
     .select('*')
     .eq('user_id', user.id)
-    .order('pinned', { ascending: false })
-    .order('updated_at', { ascending: false })
-  return NextResponse.json({ notes: data || [] })
+    .order('sort_order')
+    .order('name')
+  return NextResponse.json({ folders: data || [] })
 }
 
 export async function POST(req: Request) {
@@ -22,15 +22,16 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { title, content, tag = 'general', folder_id = null } = await req.json()
-  if (!title || typeof title !== 'string' || !title.trim())
-    return NextResponse.json({ error: 'title required' }, { status: 400 })
+  const { name, parent_id = null, icon = '📁', color = '#6366f1' } = await req.json()
+  if (!name || typeof name !== 'string' || !name.trim())
+    return NextResponse.json({ error: 'name required' }, { status: 400 })
 
   const admin = createAdminClient()
-  const { data } = await admin
-    .from('notes')
-    .insert({ user_id: user.id, title: title.trim(), content: content || null, tag, pinned: false, folder_id })
+  const { data, error } = await admin
+    .from('folders')
+    .insert({ user_id: user.id, name: name.trim(), parent_id, icon, color })
     .select()
     .single()
-  return NextResponse.json({ note: data })
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ folder: data })
 }

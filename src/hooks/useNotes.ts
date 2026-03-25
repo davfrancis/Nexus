@@ -18,7 +18,7 @@ export function useNotes() {
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
-  const addNote = async (fields: { title: string; content?: string; tag?: string }) => {
+  const addNote = async (fields: { title: string; content?: string; tag?: string; folder_id?: string | null }) => {
     const res = await fetch('/api/notes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -27,10 +27,10 @@ export function useNotes() {
     if (!res.ok) return null
     const json = await res.json()
     if (json.note) setNotes(prev => [json.note, ...prev])
-    return json.note
+    return json.note as Note
   }
 
-  const updateNote = async (id: string, updates: Partial<Pick<Note, 'title' | 'content' | 'tag' | 'pinned'>>) => {
+  const updateNote = async (id: string, updates: Partial<Pick<Note, 'title' | 'content' | 'tag' | 'pinned' | 'folder_id'>>) => {
     const res = await fetch(`/api/notes/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -39,7 +39,7 @@ export function useNotes() {
     if (!res.ok) return null
     const json = await res.json()
     if (json.note) setNotes(prev => prev.map(n => n.id === id ? json.note : n))
-    return json.note
+    return json.note as Note
   }
 
   const deleteNote = async (id: string) => {

@@ -336,6 +336,42 @@ export type Database = {
         }
         Relationships: []
       }
+      folders: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          parent_id: string | null
+          icon: string
+          color: string
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          parent_id?: string | null
+          icon?: string
+          color?: string
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          parent_id?: string | null
+          icon?: string
+          color?: string
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notes: {
         Row: {
           id: string
@@ -344,6 +380,7 @@ export type Database = {
           content: string | null
           tag: string
           pinned: boolean
+          folder_id: string | null
           created_at: string
           updated_at: string
         }
@@ -354,6 +391,7 @@ export type Database = {
           content?: string | null
           tag?: string
           pinned?: boolean
+          folder_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -364,6 +402,7 @@ export type Database = {
           content?: string | null
           tag?: string
           pinned?: boolean
+          folder_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -473,6 +512,7 @@ export type Database = {
 }
 
 // Tipos derivados para uso nos componentes
+export type Folder       = Database['public']['Tables']['folders']['Row']
 export type Task         = Database['public']['Tables']['tasks']['Row']
 export type Event        = Database['public']['Tables']['events']['Row']
 export type Habit        = Database['public']['Tables']['habits']['Row']
