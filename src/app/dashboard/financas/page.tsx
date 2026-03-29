@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -34,6 +34,7 @@ export default function FinancasPage() {
     totalExpense, totalIncome, balance,
     addTransaction, updateTransaction, deleteTransaction,
     addGoal, updateGoal, deleteGoal, addToGoal,
+    refresh,
   } = useFinancas()
 
   const [tab, setTab] = useState<'overview' | 'transactions' | 'goals'>('overview')
@@ -43,6 +44,50 @@ export default function FinancasPage() {
   const [showGoalModal, setShowGoalModal] = useState(false)
   const [catFilter, setCatFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const [importing, setImporting] = useState(false)
+  const importRef = useRef<HTMLInputElement>(null)
+
+  // ── Import / Export ───────────────────────────────────────────
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImporting(true)
+    try {
+      const text = await file.text()
+      const json = JSON.parse(text)
+      const res = await fetch('/api/financas/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(json),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Erro ao importar')
+      alert(`✅ ${data.imported} lançamentos importados com sucesso!`)
+      await refresh()
+    } catch (err: unknown) {
+      alert('Erro: ' + (err instanceof Error ? err.message : String(err)))
+    } finally {
+      setImporting(false)
+      if (importRef.current) importRef.current.value = ''
+    }
+  }
+
+  async function handleExport() {
+    try {
+      const res = await fetch('/api/financas/transactions/all')
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Erro ao exportar')
+      const blob = new Blob([JSON.stringify({ transactions: data.transactions }, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `financas_backup_${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err: unknown) {
+      alert('Erro: ' + (err instanceof Error ? err.message : String(err)))
+    }
+  }
 
   // ── Derived ──────────────────────────────────────────────────
   const catTotals = useMemo(() => {
@@ -230,15 +275,26 @@ export default function FinancasPage() {
             <div className="fin-panel">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
                 <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Lançamentos de {MONTHS[month - 1]}</span>
-                <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', fontSize: 14 }}>🔍</span>
-                  <input
-                    className="fin-input"
-                    placeholder="Buscar..."
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    style={{ paddingLeft: 30, width: 200 }}
-                  />
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input ref={importRef} type="file" accept=".json" onChange={handleImport} style={{ display: 'none' }} />
+                  <button onClick={() => importRef.current?.click()} disabled={importing}
+                    style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 13px', fontSize: 12, color: 'var(--text3)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    {importing ? '⏳ Importando...' : '📥 Importar'}
+                  </button>
+                  <button onClick={handleExport}
+                    style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 13px', fontSize: 12, color: 'var(--text3)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    📤 Exportar
+                  </button>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', fontSize: 14 }}>🔍</span>
+                    <input
+                      className="fin-input"
+                      placeholder="Buscar..."
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                      style={{ paddingLeft: 30, width: 200 }}
+                    />
+                  </div>
                 </div>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
