@@ -511,6 +511,36 @@ export type Database = {
   }
 }
 
+// Tipos avulsos (tabelas não mapeadas no Database type)
+export type Transaction = {
+  id: string
+  user_id: string
+  description: string
+  amount: number
+  type: 'expense' | 'income'
+  category: string
+  date: string
+  repeat_type: 'none' | 'monthly' | null
+  installment_group: string | null
+  installment_num: number | null
+  installment_total: number | null
+  created_at: string
+  updated_at: string
+}
+
+export type FinancialGoal = {
+  id: string
+  user_id: string
+  name: string
+  current_amount: number
+  target_amount: number
+  deadline: string | null
+  color: string
+  icon: string
+  created_at: string
+  updated_at: string
+}
+
 // Tipos derivados para uso nos componentes
 export type Folder       = Database['public']['Tables']['folders']['Row']
 export type Task         = Database['public']['Tables']['tasks']['Row']

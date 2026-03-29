@@ -18,6 +18,7 @@ const NAV = [
   { divider: true },
   { href: '/dashboard/foco',      icon: '⏱',   label: 'Foco'       },
   { href: '/dashboard/saude',     icon: '❤️',  label: 'Saúde'      },
+  { href: '/dashboard/financas',  icon: '💰',  label: 'Finanças'   },
 ]
 
 export default function Sidebar() {
