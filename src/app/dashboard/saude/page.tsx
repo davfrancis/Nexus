@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useHealth } from '@/hooks/useHealth'
+import { FitnessGoals } from '@/components/FitnessGoals'
 import { format } from 'date-fns'
 
 // ── Mood options ────────────────────────────────────────────────────
@@ -604,6 +605,14 @@ export default function SaudePage() {
             </div>
           )}
         </div>
+
+        {/* Metas Fitness */}
+        <FitnessGoals
+          todayKcal={totals.kcal}
+          todayProtein={totals.p}
+          todayCarbs={totals.c}
+          todayFat={totals.f}
+        />
 
         {/* Histórico semanal */}
         <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, gridColumn: '1 / -1' }}>
