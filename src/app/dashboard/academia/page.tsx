@@ -146,7 +146,7 @@ export default function AcademiaPage() {
         </div>
       )}
 
-      <WorkoutPlans exercises={exercises} addExercise={addExercise} onRefresh={refresh} />
+      <WorkoutPlans exercises={exercises} addExercise={addExercise} deleteExercise={deleteExercise} onRefresh={refresh} />
 
       {showModal && (
         <ModalPortal onClose={() => setShowModal(false)}>

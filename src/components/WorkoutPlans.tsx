@@ -211,6 +211,7 @@ interface Props {
   exercises: Exercise[]
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   addExercise: (ex: any) => Promise<unknown>
+  deleteExercise: (id: string) => Promise<unknown>
   onRefresh: () => void
 }
 
@@ -269,11 +270,13 @@ const ZONE_LABEL: Record<string, string> = {
 }
 
 // ── Main component ──────────────────────────────────────────────────
-export function WorkoutPlans({ exercises, addExercise, onRefresh }: Props) {
+export function WorkoutPlans({ exercises, addExercise, deleteExercise, onRefresh }: Props) {
   const [goal, setGoal] = useState<GoalKey | null>(null)
   const [importing, setImporting] = useState<string | null>(null)
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null)
   const [confirmPlan, setConfirmPlan] = useState<string | null>(null)
+  const [confirmClear, setConfirmClear] = useState(false)
+  const [clearing, setClearing] = useState(false)
   const { weekNum, isDeload, nextDeload, start, reset, startDate } = usePeriodization()
 
   useEffect(() => {
@@ -290,6 +293,18 @@ export function WorkoutPlans({ exercises, addExercise, onRefresh }: Props) {
     }
     return out
   }, [exercises])
+
+  const handleClearAll = async () => {
+    setClearing(true)
+    setConfirmClear(false)
+    for (const ex of exercises) {
+      await deleteExercise(ex.id)
+      await new Promise(r => setTimeout(r, 40))
+    }
+    reset() // also reset the week counter
+    setClearing(false)
+    onRefresh()
+  }
 
   const handleImport = async (programId: string) => {
     const program = PROGRAMS.find(p => p.id === programId)
@@ -333,10 +348,17 @@ export function WorkoutPlans({ exercises, addExercise, onRefresh }: Props) {
                 🚀 Iniciar ciclo
               </button>
             ) : (
-              <button onClick={reset}
-                style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg3)', color: 'var(--text3)', fontSize: 12, cursor: 'pointer' }}>
-                Reiniciar
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={reset}
+                  style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg3)', color: 'var(--text3)', fontSize: 12, cursor: 'pointer' }}
+                  title="Reinicia apenas o contador de semanas">
+                  Reiniciar contador
+                </button>
+                <button onClick={() => setConfirmClear(true)} disabled={clearing || exercises.length === 0}
+                  style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #ff6b6b60', background: '#ff6b6b15', color: '#ff6b6b', fontSize: 12, cursor: exercises.length === 0 ? 'not-allowed' : 'pointer', opacity: exercises.length === 0 ? 0.4 : 1 }}>
+                  {clearing ? '⏳ Limpando...' : '🔄 Trocar programa'}
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -503,6 +525,30 @@ export function WorkoutPlans({ exercises, addExercise, onRefresh }: Props) {
           })}
         </div>
       </div>
+
+      {/* Confirm clear modal */}
+      {confirmClear && (
+        <div style={{ position: 'fixed', inset: 0, background: '#0009', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setConfirmClear(false)}>
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 14, padding: 28, width: 380, maxWidth: '90vw' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>🔄 Trocar programa?</div>
+            <div style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20 }}>
+              Todos os <strong style={{ color: '#ff6b6b' }}>{exercises.length} exercícios</strong> cadastrados serão removidos e o contador de semanas será zerado. Depois é só importar outro programa.
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setConfirmClear(false)}
+                style={{ flex: 1, padding: '10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg3)', color: 'var(--text3)', cursor: 'pointer', fontSize: 13 }}>
+                Cancelar
+              </button>
+              <button onClick={handleClearAll}
+                style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: '#ff6b6b', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+                Limpar tudo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirm import modal */}
       {confirmPlan && (
