@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:rpstrength.com)",
+      "WebFetch(domain:volume-landmarks-rp-rals.vercel.app)",
+      "Bash(git commit -m ' *)",
+      "Bash(git checkout *)"
+    ]
+  }
+}

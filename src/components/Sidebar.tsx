@@ -14,7 +14,6 @@ const NAV = [
   { divider: true },
   { href: '/dashboard/academia',  icon: '💪',  label: 'Academia'   },
   { href: '/dashboard/projetos',  icon: '🚀',  label: 'Projetos'   },
-  { href: '/dashboard/notas',     icon: '🧠',  label: 'Cérebro'    },
   { divider: true },
   { href: '/dashboard/foco',      icon: '⏱',   label: 'Foco'       },
   { href: '/dashboard/saude',     icon: '❤️',  label: 'Saúde'      },
