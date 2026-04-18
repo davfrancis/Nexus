@@ -320,8 +320,8 @@ export function WorkoutPlans({ exercises, addExercise, onRefresh }: Props) {
               <div style={{ fontSize: 12, color: '#ffd93d', fontWeight: 600 }}>⚠️ Semana {weekNum} — DELOAD esta semana! Reduza volume 40–50% e intensidade 10–15%.</div>
             ) : (
               <div style={{ fontSize: 12, color: 'var(--text3)' }}>
-                Semana <strong style={{ color: 'var(--accent)' }}>{weekNum}</strong> de treino
-                &nbsp;·&nbsp; próximo deload em <strong style={{ color: '#ffd93d' }}>{nextDeload}</strong> sem.
+                Semana <strong style={{ color: 'var(--accent)' }}>{weekNum}</strong>{' '}de treino
+                &nbsp;·&nbsp; próximo deload em <strong style={{ color: '#ffd93d' }}>{nextDeload}</strong>{' '}sem.
                 &nbsp;·&nbsp; Início: {new Date(startDate + 'T12:00:00').toLocaleDateString('pt-BR')}
               </div>
             )}
