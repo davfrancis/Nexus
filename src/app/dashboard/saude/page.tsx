@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useHealth } from '@/hooks/useHealth'
 import { FitnessGoals } from '@/components/FitnessGoals'
+import { NutritionHistory } from '@/components/NutritionHistory'
 import { format } from 'date-fns'
 
 // ── Mood options ────────────────────────────────────────────────────
@@ -264,6 +265,7 @@ export default function SaudePage() {
   // ── Nutrition state ──
   const [foodLogs, setFoodLogs] = useState<FoodLog[]>([])
   const [calorieGoal, setCalorieGoal] = useState<number>(2000)
+  const [nutritionTargets, setNutritionTargets] = useState<{ kcal: number; protein: number; carbs: number; fat: number } | null>(null)
   const [showCalc, setShowCalc] = useState(false)
   const [foodSearch, setFoodSearch] = useState('')
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null)
@@ -612,6 +614,14 @@ export default function SaudePage() {
           todayProtein={totals.p}
           todayCarbs={totals.c}
           todayFat={totals.f}
+          onTargetsChange={setNutritionTargets}
+        />
+
+        {/* Histórico Nutricional */}
+        <NutritionHistory
+          targets={nutritionTargets}
+          todayKcal={totals.kcal}
+          todayProtein={totals.p}
         />
 
         {/* Histórico semanal */}

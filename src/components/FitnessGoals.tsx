@@ -255,9 +255,10 @@ interface Props {
   todayProtein: number
   todayCarbs: number
   todayFat: number
+  onTargetsChange?: (targets: { kcal: number; protein: number; carbs: number; fat: number } | null) => void
 }
 
-export function FitnessGoals({ todayKcal, todayProtein, todayCarbs, todayFat }: Props) {
+export function FitnessGoals({ todayKcal, todayProtein, todayCarbs, todayFat, onTargetsChange }: Props) {
   const [profile, setProfile] = useState<FitnessProfile | null>(null)
   const [showModal, setShowModal] = useState(false)
 
@@ -273,10 +274,15 @@ export function FitnessGoals({ todayKcal, todayProtein, todayCarbs, todayFat }: 
     setShowModal(false)
   }
 
-  const tdee   = profile ? calcTDEE(profile) : null
-  const macros = profile && tdee ? calcMacros(profile, tdee) : null
+  const tdee    = profile ? calcTDEE(profile) : null
+  const macros  = profile && tdee ? calcMacros(profile, tdee) : null
   const bmiData = profile ? calcBMI(profile.weight, profile.height) : null
   const goalInfo = profile ? GOALS[profile.goal] : null
+
+  useEffect(() => {
+    onTargetsChange?.(macros ?? null)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [macros?.kcal, macros?.protein, macros?.carbs, macros?.fat])
 
   const bmiPct = useMemo(() => {
     if (!bmiData) return 0
