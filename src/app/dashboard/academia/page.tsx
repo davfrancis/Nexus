@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useExercises } from '@/hooks/useExercises'
 import ModalPortal from '@/components/ModalPortal'
+import { WorkoutPlans } from '@/components/WorkoutPlans'
 
 const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 const MUSCLE_GROUPS = ['peito', 'costas', 'ombros', 'bíceps', 'tríceps', 'pernas', 'glúteos', 'abdômen', 'cardio']
@@ -144,6 +145,8 @@ export default function AcademiaPage() {
           })}
         </div>
       )}
+
+      <WorkoutPlans exercises={exercises} addExercise={addExercise} onRefresh={refresh} />
 
       {showModal && (
         <ModalPortal onClose={() => setShowModal(false)}>
