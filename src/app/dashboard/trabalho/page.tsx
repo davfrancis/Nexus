@@ -363,9 +363,9 @@ function TicketsTab({ driveUrl }: { driveUrl: string }) {
 
       {/* Ticket modal */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto' }}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 1000, overflowY: 'auto', padding: '32px 16px' }}
           onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}>
-          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 600, maxWidth: 'calc(100% - 32px)', margin: '32px auto', maxHeight: 'calc(100vh - 64px)', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 600, maxWidth: '100%', margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontFamily: 'var(--font-d)', fontSize: 18, fontWeight: 700 }}>{editing ? 'Editar ticket' : 'Novo ticket'}</h2>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer' }}>✕</button>
@@ -516,9 +516,9 @@ function TicketsTab({ driveUrl }: { driveUrl: string }) {
 
       {/* Overdue report modal */}
       {showReport && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto' }}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 1000, overflowY: 'auto', padding: '32px 16px' }}
           onClick={e => { if (e.target === e.currentTarget) setShowReport(false) }}>
-          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 600, maxWidth: 'calc(100% - 32px)', margin: '32px auto', maxHeight: 'calc(100vh - 64px)', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 600, maxWidth: '100%', margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div>
                 <div style={{ fontFamily: 'var(--font-d)', fontSize: 17, fontWeight: 700 }}>⚠️ Relatório de tickets em atraso</div>
@@ -727,9 +727,9 @@ function ScriptsTab() {
 
       {/* Script modal */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto' }}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 1000, overflowY: 'auto', padding: '32px 16px' }}
           onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}>
-          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 600, maxWidth: 'calc(100% - 32px)', margin: '32px auto', maxHeight: 'calc(100vh - 64px)', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 600, maxWidth: '100%', margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontFamily: 'var(--font-d)', fontSize: 18, fontWeight: 700 }}>{editing ? 'Editar script' : 'Novo script'}</h2>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer' }}>✕</button>
@@ -902,9 +902,9 @@ function KBTab() {
 
       {/* View modal */}
       {viewing && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto' }}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 1000, overflowY: 'auto', padding: '32px 16px' }}
           onClick={e => { if (e.target === e.currentTarget) setViewing(null) }}>
-          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 640, maxWidth: 'calc(100% - 32px)', margin: '32px auto', maxHeight: 'calc(100vh - 64px)', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 640, maxWidth: '100%', margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div>
                 <div style={{ fontFamily: 'var(--font-d)', fontSize: 18, fontWeight: 700 }}>{viewing.title}</div>
@@ -935,9 +935,9 @@ function KBTab() {
 
       {/* Add/Edit modal */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto' }}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 1000, overflowY: 'auto', padding: '32px 16px' }}
           onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}>
-          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 580, maxWidth: 'calc(100% - 32px)', margin: '32px auto', maxHeight: 'calc(100vh - 64px)', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 580, maxWidth: '100%', margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontFamily: 'var(--font-d)', fontSize: 18, fontWeight: 700 }}>{editing ? 'Editar procedimento' : 'Novo procedimento'}</h2>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer' }}>✕</button>
@@ -1110,9 +1110,9 @@ function TemplatesTab() {
 
       {/* Modal */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto' }}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 1000, overflowY: 'auto', padding: '32px 16px' }}
           onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}>
-          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 520, maxWidth: 'calc(100% - 32px)', margin: '32px auto', maxHeight: 'calc(100vh - 64px)', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 520, maxWidth: '100%', margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontFamily: 'var(--font-d)', fontSize: 18, fontWeight: 700 }}>{editing ? 'Editar template' : 'Novo template'}</h2>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer' }}>✕</button>
