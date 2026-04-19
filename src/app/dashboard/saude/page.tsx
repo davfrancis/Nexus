@@ -490,9 +490,11 @@ const RECIPES: Recipe[] = [
   },
 ]
 
-function ReceitasSection() {
+function ReceitasSection({ onAddToNutrition }: { onAddToNutrition?: (r: Recipe) => Promise<void> }) {
   const [mealFilter, setMealFilter] = useState<Meal | 'all'>('all')
   const [selected, setSelected]     = useState<Recipe | null>(null)
+  const [adding, setAdding]         = useState(false)
+  const [added, setAdded]           = useState(false)
 
   const filtered = mealFilter === 'all' ? RECIPES : RECIPES.filter(r => r.meal === mealFilter)
 
@@ -637,6 +639,31 @@ function ReceitasSection() {
               <div style={{ marginTop: 16, background: '#ffd93d15', border: '1px solid #ffd93d30', borderRadius: 10, padding: '10px 14px' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#ffd93d', marginBottom: 4 }}>💡 DICA FIT</div>
                 <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.6 }}>{selected.tip}</div>
+              </div>
+            )}
+
+            {/* Add to Nutrition */}
+            {onAddToNutrition && (
+              <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+                <button
+                  disabled={adding || added}
+                  onClick={async () => {
+                    setAdding(true)
+                    await onAddToNutrition(selected)
+                    setAdding(false)
+                    setAdded(true)
+                    setTimeout(() => setAdded(false), 3000)
+                  }}
+                  style={{
+                    width: '100%', padding: '11px', borderRadius: 10, border: 'none', cursor: adding || added ? 'default' : 'pointer',
+                    background: added ? '#6bcb7730' : 'var(--accent)', color: added ? '#6bcb77' : '#fff',
+                    fontSize: 14, fontWeight: 700, transition: 'background .2s',
+                  }}>
+                  {added ? '✅ Adicionado à Nutrição!' : adding ? 'Adicionando…' : `🍽️ Adicionar refeição à Nutrição (+${selected.kcal} kcal)`}
+                </button>
+                <div style={{ fontSize: 11, color: 'var(--text3)', textAlign: 'center', marginTop: 6 }}>
+                  Registra {selected.protein}g prot · {selected.carbs}g carb · {selected.fat}g gord no log de hoje
+                </div>
               </div>
             )}
           </div>
@@ -1131,7 +1158,25 @@ export default function SaudePage() {
         />
 
         {/* Receitas Fit */}
-        <ReceitasSection />
+        <ReceitasSection onAddToNutrition={async (r) => {
+          const res = await fetch('/api/nutrition', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              food_name: r.name,
+              portion_g: 1,
+              calories_kcal: r.kcal,
+              protein_g: r.protein,
+              carbs_g: r.carbs,
+              fat_g: r.fat,
+              log_date: today,
+            }),
+          })
+          if (res.ok) {
+            const json = await res.json()
+            setFoodLogs(prev => [...prev, json.log])
+          }
+        }} />
 
         {/* Histórico Nutricional */}
         <NutritionHistory
