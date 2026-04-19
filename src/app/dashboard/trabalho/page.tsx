@@ -403,8 +403,7 @@ function TicketsTab({ driveUrl }: { driveUrl: string }) {
         setParseError(`Erro ao importar: ${d.error}`)
       } else {
         setImportResult(d)
-        await fetch_()
-        setTimeout(() => { setShowImport(false); setCsvParsed([]); setImportResult(null) }, 2000)
+        setTimeout(() => window.location.reload(), 1500)
       }
     } catch (e: any) {
       setParseError(`Erro: ${e.message}`)
