@@ -92,11 +92,17 @@ export async function POST(req: Request) {
       task_id: data.id,
     }
 
-    const { data: savedEvent } = await admin
+    const { data: savedEvent, error: eventError } = await admin
       .from('events')
       .insert(eventInsert)
       .select()
       .single()
+
+    if (eventError) {
+      console.error('[tasks/POST] Falha ao criar evento espelho:', eventError.message)
+      // Retorna a tarefa mesmo com erro no evento, mas informa o cliente
+      return NextResponse.json({ task: data, calendar_error: eventError.message })
+    }
 
     // Tentar sincronizar com Google Calendar se o usuário tiver token
     if (savedEvent) {
