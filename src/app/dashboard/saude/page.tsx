@@ -133,6 +133,519 @@ const FOODS: FoodItem[] = [
   { name: 'Whey protein (scoop 30g)',  kcal: 109, p: 23.0, c: 3.0,  f: 1.5 },
 ]
 
+// ── Receitas Fit ────────────────────────────────────────────────────
+type Meal = 'breakfast' | 'lunch' | 'snack' | 'dinner'
+type Recipe = {
+  id: string; name: string; meal: Meal; time: number
+  kcal: number; protein: number; carbs: number; fat: number
+  tags: string[]; emoji: string
+  ingredients: { qty: string; item: string }[]
+  steps: string[]; tip?: string
+}
+
+const MEAL_LABELS: Record<Meal, { label: string; icon: string; color: string }> = {
+  breakfast: { label: 'Café da Manhã', icon: '🌅', color: '#ff9500' },
+  lunch:     { label: 'Almoço',        icon: '☀️',  color: '#4d96ff' },
+  snack:     { label: 'Café da Tarde', icon: '🍎',  color: '#6bcb77' },
+  dinner:    { label: 'Jantar',        icon: '🌙',  color: '#a78bfa' },
+}
+
+const RECIPES: Recipe[] = [
+  // ── Café da Manhã ──
+  {
+    id: 'r1', name: 'Panqueca de Aveia com Banana', meal: 'breakfast', time: 10, emoji: '🥞',
+    kcal: 320, protein: 20, carbs: 42, fat: 7,
+    tags: ['Sem glúten', 'Rápido', 'Alto proteína'],
+    ingredients: [
+      { qty: '3', item: 'ovos inteiros' },
+      { qty: '1 banana madura', item: '(amassada)' },
+      { qty: '4 col. sopa', item: 'aveia em flocos finos' },
+      { qty: '1 pitada', item: 'sal e canela' },
+      { qty: '½ col. chá', item: 'fermento em pó (opcional)' },
+    ],
+    steps: [
+      'Amasse a banana com um garfo até virar purê.',
+      'Misture a banana amassada com os ovos, aveia, sal e canela. Bata com um garfo até incorporar bem.',
+      'Aqueça uma frigideira antiaderente em fogo médio com um fio de azeite ou spray de óleo.',
+      'Despeje 2-3 col. sopa da massa por panqueca. Cozinhe por 2-3 min até aparecerem bolhinhas.',
+      'Vire com cuidado e cozinhe mais 1-2 min.',
+      'Sirva com mel, frutas frescas ou pasta de amendoim.',
+    ],
+    tip: 'Use banana bem madura para adoçar naturalmente e dispensar açúcar.',
+  },
+  {
+    id: 'r2', name: 'Omelete Fit Proteico', meal: 'breakfast', time: 8, emoji: '🍳',
+    kcal: 280, protein: 28, carbs: 5, fat: 16,
+    tags: ['Low carb', 'Rápido', 'Alto proteína'],
+    ingredients: [
+      { qty: '3', item: 'ovos inteiros' },
+      { qty: '50g', item: 'queijo cottage' },
+      { qty: '2 fatias', item: 'presunto magro picado' },
+      { qty: '½ und', item: 'tomate picado' },
+      { qty: 'A gosto', item: 'sal, pimenta e orégano' },
+    ],
+    steps: [
+      'Bata os ovos com sal e pimenta em um bowl.',
+      'Aqueça a frigideira antiaderente em fogo médio com spray de óleo.',
+      'Despeje os ovos batidos e deixe firmar levemente nas bordas.',
+      'Adicione o cottage, presunto e tomate sobre metade do omelete.',
+      'Dobre o omelete ao meio, cubra e cozinhe por 1 min.',
+      'Sirva imediatamente com orégano por cima.',
+    ],
+    tip: 'Substitua o presunto por frango desfiado para ainda mais proteína.',
+  },
+  {
+    id: 'r3', name: 'Vitamina Proteica de Banana', meal: 'breakfast', time: 5, emoji: '🥤',
+    kcal: 350, protein: 30, carbs: 40, fat: 6,
+    tags: ['Sem cozinhar', 'Rápido', 'Alto proteína'],
+    ingredients: [
+      { qty: '1 banana', item: 'congelada ou fresca' },
+      { qty: '300ml', item: 'leite desnatado ou vegetal' },
+      { qty: '1 scoop (30g)', item: 'whey protein baunilha' },
+      { qty: '1 col. sopa', item: 'aveia em flocos' },
+      { qty: '1 col. chá', item: 'pasta de amendoim' },
+      { qty: '1 pitada', item: 'canela' },
+    ],
+    steps: [
+      'Coloque o leite no liquidificador primeiro (facilita bater).',
+      'Adicione a banana, o whey, a aveia e a pasta de amendoim.',
+      'Bata por 30-60 segundos até ficar cremoso.',
+      'Sirva imediatamente. Se quiser mais espesso, adicione gelo.',
+    ],
+    tip: 'Congele bananas maduras em porções para sempre ter disponível. Substitua o whey por iogurte grego para versão sem suplemento.',
+  },
+  {
+    id: 'r4', name: 'Tapioca com Frango e Cottage', meal: 'breakfast', time: 12, emoji: '🫓',
+    kcal: 290, protein: 32, carbs: 30, fat: 5,
+    tags: ['Sem glúten', 'Alto proteína', 'Leve'],
+    ingredients: [
+      { qty: '4 col. sopa (50g)', item: 'goma de tapioca hidratada' },
+      { qty: '80g', item: 'frango desfiado temperado' },
+      { qty: '3 col. sopa', item: 'queijo cottage' },
+      { qty: 'A gosto', item: 'sal e ervas (salsinha, cebolinha)' },
+    ],
+    steps: [
+      'Tempere o frango desfiado com sal, limão e ervas.',
+      'Aqueça uma frigideira antiaderente em fogo médio.',
+      'Espalhe a goma de tapioca formando um círculo fino.',
+      'Espere firmar (1-2 min) até a borda soltar da frigideira.',
+      'Vire com cuidado e aqueça o outro lado por 30 seg.',
+      'Coloque o frango e o cottage no centro e dobre ao meio.',
+      'Sirva com salsa e cebolinha por cima.',
+    ],
+    tip: 'Prepare o frango desfiado em maior quantidade e congele em porções — facilita a semana toda.',
+  },
+  // ── Almoço ──
+  {
+    id: 'r5', name: 'Frango Grelhado com Arroz Integral', meal: 'lunch', time: 25, emoji: '🍗',
+    kcal: 480, protein: 45, carbs: 48, fat: 9,
+    tags: ['Clássico', 'Alto proteína', 'Completo'],
+    ingredients: [
+      { qty: '200g', item: 'peito de frango' },
+      { qty: '80g cru', item: 'arroz integral' },
+      { qty: '150g', item: 'brócolis cozido no vapor' },
+      { qty: '1 dente', item: 'alho' },
+      { qty: '1 fio', item: 'azeite de oliva' },
+      { qty: 'A gosto', item: 'sal, pimenta, limão e ervas' },
+    ],
+    steps: [
+      'Tempere o frango com sal, pimenta, alho amassado, suco de limão e ervas. Deixe marinar 10 min.',
+      'Inicie o arroz integral: refogue alho no azeite, adicione o arroz, agua (proporção 1:2) e cozinhe tampado em fogo baixo por 20 min.',
+      'Grelhe o frango em frigideira quente com fio de azeite por 5-6 min de cada lado até dourar.',
+      'Enquanto isso, cozinhe o brócolis no vapor por 5 min (deve ficar al dente).',
+      'Monte o prato: arroz na base, frango fatiado e brócolis ao lado.',
+      'Regue com limão e azeite. Tempere com sal a gosto.',
+    ],
+    tip: 'Cozinhe arroz integral em dobro e congele em porções — economiza 20 min no dia seguinte.',
+  },
+  {
+    id: 'r6', name: 'Bowl de Atum com Legumes', meal: 'lunch', time: 15, emoji: '🥗',
+    kcal: 380, protein: 38, carbs: 32, fat: 10,
+    tags: ['Sem cozinhar', 'Rápido', 'Low carb'],
+    ingredients: [
+      { qty: '2 latas (170g)', item: 'atum em água escorrido' },
+      { qty: '100g', item: 'arroz integral cozido' },
+      { qty: '1 und', item: 'tomate picado' },
+      { qty: '½ und', item: 'pepino picado' },
+      { qty: '2 col. sopa', item: 'milho' },
+      { qty: '1 col. chá', item: 'azeite, limão e sal' },
+    ],
+    steps: [
+      'Escorra bem o atum e transfira para um bowl.',
+      'Adicione o arroz já cozido e levemente aquecido.',
+      'Pique o tomate e pepino em cubos médios.',
+      'Misture tudo no bowl: atum, arroz, tomate, pepino e milho.',
+      'Tempere com azeite, suco de limão, sal e pimenta.',
+      'Misture bem e sirva imediatamente.',
+    ],
+    tip: 'Adicione abacate fatiado para gorduras boas e aumentar a saciedade.',
+  },
+  {
+    id: 'r7', name: 'Tilápia Assada com Batata Doce', meal: 'lunch', time: 30, emoji: '🐟',
+    kcal: 420, protein: 42, carbs: 40, fat: 8,
+    tags: ['Assado', 'Fácil', 'Anti-inflamatório'],
+    ingredients: [
+      { qty: '200g', item: 'filé de tilápia' },
+      { qty: '150g', item: 'batata doce em cubos' },
+      { qty: '1 und', item: 'limão (suco e raspas)' },
+      { qty: '2 dentes', item: 'alho' },
+      { qty: '1 col. sopa', item: 'azeite de oliva' },
+      { qty: 'A gosto', item: 'sal, pimenta, páprica e tomilho' },
+    ],
+    steps: [
+      'Pré-aqueça o forno a 200°C.',
+      'Corte a batata doce em cubos de 2cm, tempere com azeite, sal e páprica.',
+      'Coloque os cubos numa forma e asse por 15 min.',
+      'Tempere a tilápia com sal, pimenta, alho amassado, raspas e suco de limão.',
+      'Adicione a tilápia na forma ao lado da batata doce já semi-assada.',
+      'Regue tudo com azeite e asse por mais 15 min até o peixe desaparecer a transparência.',
+      'Sirva com salsa picada por cima.',
+    ],
+    tip: 'Cozinhar tudo na mesma forma minimiza a louça e concentra os sabores.',
+  },
+  {
+    id: 'r8', name: 'Macarrão com Molho Proteico', meal: 'lunch', time: 20, emoji: '🍝',
+    kcal: 510, protein: 40, carbs: 55, fat: 11,
+    tags: ['Comfort food', 'Alto proteína', 'Fácil'],
+    ingredients: [
+      { qty: '80g cru', item: 'macarrão integral (penne ou espaguete)' },
+      { qty: '150g', item: 'carne moída patinho (90% magra)' },
+      { qty: '1 lata', item: 'tomate pelado ou molho de tomate sem açúcar' },
+      { qty: '1 und', item: 'tomate fresco picado' },
+      { qty: '2 dentes', item: 'alho' },
+      { qty: 'A gosto', item: 'sal, orégano, manjericão e pimenta' },
+    ],
+    steps: [
+      'Cozinhe o macarrão al dente conforme embalagem. Reserve.',
+      'Em uma frigideira, doure o alho em fio de azeite.',
+      'Adicione a carne moída e refogue mexendo sempre até secar a água.',
+      'Tempere com sal, pimenta e orégano.',
+      'Adicione o tomate fresco e o molho. Cozinhe em fogo médio por 8 min.',
+      'Misture o macarrão ao molho, ajuste o sal e sirva com manjericão.',
+    ],
+    tip: 'Use carne moída de patinho ou acém — menos gordura que fraldinha ou cupim.',
+  },
+  // ── Café da Tarde ──
+  {
+    id: 'r9', name: 'Iogurte Grego com Frutas e Granola', meal: 'snack', time: 3, emoji: '🫙',
+    kcal: 220, protein: 15, carbs: 28, fat: 6,
+    tags: ['Sem cozinhar', 'Rápido', 'Probiótico'],
+    ingredients: [
+      { qty: '150g', item: 'iogurte grego natural (sem açúcar)' },
+      { qty: '2 col. sopa', item: 'granola sem açúcar' },
+      { qty: '½ xíc', item: 'frutas frescas (morango, manga, banana)' },
+      { qty: '1 col. chá', item: 'mel (opcional)' },
+      { qty: '1 pitada', item: 'canela' },
+    ],
+    steps: [
+      'Coloque o iogurte grego numa tigela.',
+      'Adicione as frutas frescas picadas por cima.',
+      'Polvilhe a granola (coloque por último para manter crocante).',
+      'Regue com mel e canela a gosto.',
+    ],
+    tip: 'Monte apenas na hora de comer para a granola não amolecer. Prefira iogurte grego com ≥10g proteína/100g.',
+  },
+  {
+    id: 'r10', name: 'Vitamina de Banana com Aveia', meal: 'snack', time: 5, emoji: '🧉',
+    kcal: 260, protein: 12, carbs: 42, fat: 5,
+    tags: ['Sem cozinhar', 'Rápido', 'Energético'],
+    ingredients: [
+      { qty: '1', item: 'banana média' },
+      { qty: '250ml', item: 'leite desnatado' },
+      { qty: '2 col. sopa', item: 'aveia em flocos' },
+      { qty: '1 col. chá', item: 'mel ou tâmara' },
+      { qty: '1 pitada', item: 'canela e noz-moscada' },
+    ],
+    steps: [
+      'Coloque o leite no liquidificador.',
+      'Adicione a banana cortada, aveia, mel e especiarias.',
+      'Bata por 30 segundos até homogêneo.',
+      'Sirva com gelo se preferir gelado.',
+    ],
+    tip: 'Consuma até 1h antes do treino — fornece energia de liberação rápida e moderada.',
+  },
+  {
+    id: 'r11', name: 'Mix de Castanhas com Fruta', meal: 'snack', time: 2, emoji: '🥜',
+    kcal: 200, protein: 6, carbs: 18, fat: 13,
+    tags: ['Sem cozinhar', 'Anti-inflamatório', 'Prático'],
+    ingredients: [
+      { qty: '30g', item: 'mix de castanhas (caju, amêndoa, nozes)' },
+      { qty: '1 und', item: 'maçã ou pera' },
+      { qty: '1 und', item: 'castanha do Pará' },
+    ],
+    steps: [
+      'Separe 30g de castanhas variadas numa tigela ou pote.',
+      'Lave e corte a fruta.',
+      'Consuma juntos — a fibra da fruta + gordura das castanhas = saciedade prolongada.',
+    ],
+    tip: 'Pré-porcione as castanhas em potinhos semanais para não exagerar na quantidade.',
+  },
+  {
+    id: 'r12', name: 'Torrada Integral com Ovo', meal: 'snack', time: 8, emoji: '🍞',
+    kcal: 240, protein: 16, carbs: 22, fat: 10,
+    tags: ['Rápido', 'Saciante', 'Fácil'],
+    ingredients: [
+      { qty: '2 fatias', item: 'pão de forma integral' },
+      { qty: '2', item: 'ovos' },
+      { qty: '½ und', item: 'tomate fatiado' },
+      { qty: 'A gosto', item: 'sal, pimenta e orégano' },
+    ],
+    steps: [
+      'Torre as fatias de pão.',
+      'Frite os ovos no estilo desejado (mexido, cozido ou escalfado) com sal e pimenta.',
+      'Monte: torrada + ovo + tomate fatiado.',
+      'Finalize com orégano e pimenta preta.',
+    ],
+    tip: 'Adicione abacate amassado na torrada para uma opção ainda mais nutritiva e saborosa.',
+  },
+  // ── Jantar ──
+  {
+    id: 'r13', name: 'Frango Assado com Legumes', meal: 'dinner', time: 35, emoji: '🍽️',
+    kcal: 370, protein: 42, carbs: 20, fat: 10,
+    tags: ['Low carb', 'Assado', 'Completo'],
+    ingredients: [
+      { qty: '200g', item: 'coxa ou peito de frango' },
+      { qty: '1 und', item: 'abobrinha fatiada' },
+      { qty: '1 und', item: 'cenoura cortada em palitos' },
+      { qty: '100g', item: 'brócolis' },
+      { qty: '1 col. sopa', item: 'azeite de oliva' },
+      { qty: 'A gosto', item: 'alho, sal, pimenta, páprica defumada e limão' },
+    ],
+    steps: [
+      'Pré-aqueça o forno a 200°C.',
+      'Marine o frango: alho amassado, limão, azeite, sal, pimenta e páprica. Deixe 15 min.',
+      'Corte os legumes em tamanhos similares para assar uniformemente.',
+      'Coloque tudo numa assadeira, o frango no centro e legumes ao redor.',
+      'Asse por 30-35 min, virando o frango na metade do tempo.',
+      'O frango está pronto quando atingir 75°C interno (ou ao cortar, não houver cor rosada).',
+    ],
+    tip: 'Jantar leve em carboidratos e rico em proteína favorece a recuperação muscular e o sono.',
+  },
+  {
+    id: 'r14', name: 'Omelete de Claras com Legumes', meal: 'dinner', time: 10, emoji: '🥚',
+    kcal: 220, protein: 26, carbs: 8, fat: 9,
+    tags: ['Low carb', 'Rápido', 'Leve'],
+    ingredients: [
+      { qty: '4', item: 'claras de ovo' },
+      { qty: '1', item: 'ovo inteiro' },
+      { qty: '½ und', item: 'pimentão picado' },
+      { qty: '1 und', item: 'tomate picado' },
+      { qty: '30g', item: 'queijo cottage ou mussarela light' },
+      { qty: 'A gosto', item: 'sal, pimenta, cúrcuma e salsinha' },
+    ],
+    steps: [
+      'Bata as claras com o ovo inteiro, sal, pimenta e cúrcuma.',
+      'Refogue o pimentão por 2 min em frigideira antiaderente com spray de óleo.',
+      'Adicione o tomate picado e mexa por 1 min.',
+      'Despeje a mistura de ovos sobre os legumes.',
+      'Tampe e cozinhe em fogo baixo por 3-4 min até firmar.',
+      'Adicione o queijo e dobre. Sirva com salsinha.',
+    ],
+    tip: 'Usar mais claras e menos gemas reduz calorias e gordura sem perder proteína.',
+  },
+  {
+    id: 'r15', name: 'Salada Proteica de Atum', meal: 'dinner', time: 10, emoji: '🥙',
+    kcal: 280, protein: 32, carbs: 15, fat: 9,
+    tags: ['Sem cozinhar', 'Low carb', 'Leve'],
+    ingredients: [
+      { qty: '2 latas (170g)', item: 'atum em água' },
+      { qty: '2 xíc', item: 'folhas mistas (alface, rúcula, espinafre)' },
+      { qty: '1 und', item: 'tomate cereja cortado ao meio' },
+      { qty: '½ und', item: 'pepino fatiado' },
+      { qty: '1 und', item: 'ovo cozido fatiado' },
+      { qty: 'Molho', item: '1 limão + 1 col. azeite + sal + mostarda' },
+    ],
+    steps: [
+      'Cozinhe o ovo (8 min água fervente) e fatie.',
+      'Lave e seque bem as folhas.',
+      'Monte a base de folhas na tigela.',
+      'Adicione o atum escorrido, tomate, pepino e ovo.',
+      'Prepare o molho: misture suco de limão, azeite, mostarda e sal.',
+      'Regue com o molho na hora de servir.',
+    ],
+    tip: 'Jante cedo (2h antes de dormir) para melhor digestão e qualidade do sono.',
+  },
+  {
+    id: 'r16', name: 'Sopa de Legumes com Frango', meal: 'dinner', time: 30, emoji: '🍲',
+    kcal: 310, protein: 35, carbs: 22, fat: 6,
+    tags: ['Reconfortante', 'Anti-inflamatório', 'Fácil'],
+    ingredients: [
+      { qty: '150g', item: 'frango cozido e desfiado' },
+      { qty: '1 und', item: 'cenoura em cubos pequenos' },
+      { qty: '1 talo', item: 'aipo picado' },
+      { qty: '½ und', item: 'chuchu em cubos' },
+      { qty: '1 litro', item: 'caldo de frango caseiro ou water' },
+      { qty: 'A gosto', item: 'sal, alho, cúrcuma, pimenta e salsinha' },
+    ],
+    steps: [
+      'Em panela, doure alho amassado em fio de azeite.',
+      'Adicione a cenoura, aipo e chuchu. Refogue por 3 min.',
+      'Junte o caldo (ou água com 1 cubo de caldo sem gordura) e tempere.',
+      'Cozinhe em fogo médio por 15 min até os legumes ficarem macios.',
+      'Adicione o frango desfiado e cúrcuma. Cozinhe por mais 5 min.',
+      'Ajuste o sal e sirva com salsinha fresca.',
+    ],
+    tip: 'Sopa é excelente para o jantar: hidratante, reconfortante e de baixa caloria relativa ao volume.',
+  },
+]
+
+function ReceitasSection() {
+  const [mealFilter, setMealFilter] = useState<Meal | 'all'>('all')
+  const [selected, setSelected]     = useState<Recipe | null>(null)
+
+  const filtered = mealFilter === 'all' ? RECIPES : RECIPES.filter(r => r.meal === mealFilter)
+
+  return (
+    <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, gridColumn: '1 / -1' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600 }}>🍽️ Receitas Fit</div>
+          <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>Refeições saudáveis com passo a passo</div>
+        </div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <button onClick={() => setMealFilter('all')}
+            style={{ padding: '5px 12px', borderRadius: 20, border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+              background: mealFilter === 'all' ? 'var(--accent)' : 'var(--bg3)',
+              color: mealFilter === 'all' ? '#fff' : 'var(--text3)' }}>
+            Todas
+          </button>
+          {(Object.entries(MEAL_LABELS) as [Meal, typeof MEAL_LABELS[Meal]][]).map(([key, m]) => (
+            <button key={key} onClick={() => setMealFilter(key)}
+              style={{ padding: '5px 12px', borderRadius: 20, border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                background: mealFilter === key ? m.color : 'var(--bg3)',
+                color: mealFilter === key ? '#fff' : 'var(--text3)' }}>
+              {m.icon} {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+        {filtered.map(r => {
+          const ml = MEAL_LABELS[r.meal]
+          return (
+            <div key={r.id} onClick={() => setSelected(r)}
+              style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, cursor: 'pointer',
+                transition: 'border-color .15s, transform .1s' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--accent)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLDivElement).style.transform = 'none' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                <span style={{ fontSize: 28 }}>{r.emoji}</span>
+                <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: ml.color + '20', color: ml.color, fontWeight: 600 }}>
+                  {ml.icon} {ml.label}
+                </span>
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4, lineHeight: 1.3 }}>{r.name}</div>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                <span style={{ fontSize: 10, color: 'var(--text3)' }}>⏱ {r.time} min</span>
+                <span style={{ fontSize: 10, color: '#ff9500', fontWeight: 600 }}>{r.kcal} kcal</span>
+              </div>
+              <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                <div style={{ flex: 1, background: 'var(--bg2)', borderRadius: 6, padding: '4px 6px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 9, color: 'var(--text3)' }}>PROT</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#4d96ff' }}>{r.protein}g</div>
+                </div>
+                <div style={{ flex: 1, background: 'var(--bg2)', borderRadius: 6, padding: '4px 6px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 9, color: 'var(--text3)' }}>CARB</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#ff9500' }}>{r.carbs}g</div>
+                </div>
+                <div style={{ flex: 1, background: 'var(--bg2)', borderRadius: 6, padding: '4px 6px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 9, color: 'var(--text3)' }}>GORD</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#6bcb77' }}>{r.fat}g</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                {r.tags.slice(0, 2).map(t => (
+                  <span key={t} style={{ fontSize: 9, padding: '2px 6px', borderRadius: 8, background: 'var(--bg2)', color: 'var(--text3)' }}>{t}</span>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Recipe Detail Modal */}
+      {selected && (
+        <div onClick={e => { if (e.target === e.currentTarget) setSelected(null) }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.75)', zIndex: 9999, overflowY: 'auto', padding: '32px 16px' }}>
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 560, maxWidth: '100%', margin: '0 auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+              <div>
+                <div style={{ fontSize: 32, marginBottom: 6 }}>{selected.emoji}</div>
+                <h2 style={{ fontFamily: 'var(--font-d)', fontSize: 20, fontWeight: 700, lineHeight: 1.2 }}>{selected.name}</h2>
+                <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                  <span style={{ fontSize: 12, color: MEAL_LABELS[selected.meal].color, fontWeight: 600 }}>
+                    {MEAL_LABELS[selected.meal].icon} {MEAL_LABELS[selected.meal].label}
+                  </span>
+                  <span style={{ fontSize: 12, color: 'var(--text3)' }}>⏱ {selected.time} min</span>
+                </div>
+              </div>
+              <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer', flexShrink: 0 }}>✕</button>
+            </div>
+
+            {/* Macros */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 20 }}>
+              {[
+                { label: 'Calorias', val: `${selected.kcal}`, unit: 'kcal', color: '#ff9500' },
+                { label: 'Proteína', val: `${selected.protein}`, unit: 'g', color: '#4d96ff' },
+                { label: 'Carbs',    val: `${selected.carbs}`,  unit: 'g', color: '#ffd93d' },
+                { label: 'Gordura', val: `${selected.fat}`,    unit: 'g', color: '#6bcb77' },
+              ].map(m => (
+                <div key={m.label} style={{ background: 'var(--bg3)', borderRadius: 8, padding: '10px 8px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 9, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: .5, marginBottom: 4 }}>{m.label}</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: m.color, fontFamily: 'var(--font-d)' }}>{m.val}</div>
+                  <div style={{ fontSize: 9, color: 'var(--text3)' }}>{m.unit}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Tags */}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
+              {selected.tags.map(t => (
+                <span key={t} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 12, background: 'var(--accent)20', color: 'var(--accent2)', fontWeight: 600 }}>{t}</span>
+              ))}
+            </div>
+
+            {/* Ingredients */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, color: 'var(--text3)', marginBottom: 10 }}>Ingredientes</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {selected.ingredients.map((ing, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'baseline', fontSize: 13 }}>
+                    <span style={{ color: 'var(--accent)', fontWeight: 700, minWidth: 90, fontSize: 12 }}>{ing.qty}</span>
+                    <span style={{ color: 'var(--text)' }}>{ing.item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Steps */}
+            <div style={{ marginBottom: selected.tip ? 16 : 0 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, color: 'var(--text3)', marginBottom: 10 }}>Modo de Preparo</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {selected.steps.map((step, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--accent)', color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{i + 1}</span>
+                    <span style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text)' }}>{step}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Tip */}
+            {selected.tip && (
+              <div style={{ marginTop: 16, background: '#ffd93d15', border: '1px solid #ffd93d30', borderRadius: 10, padding: '10px 14px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#ffd93d', marginBottom: 4 }}>💡 DICA FIT</div>
+                <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.6 }}>{selected.tip}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Types ───────────────────────────────────────────────────────────
 type FoodLog = {
   id: string
@@ -616,6 +1129,9 @@ export default function SaudePage() {
           todayFat={totals.f}
           onTargetsChange={setNutritionTargets}
         />
+
+        {/* Receitas Fit */}
+        <ReceitasSection />
 
         {/* Histórico Nutricional */}
         <NutritionHistory
