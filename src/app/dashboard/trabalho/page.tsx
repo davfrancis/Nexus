@@ -247,7 +247,7 @@ function TicketsTab({ driveUrl }: { driveUrl: string }) {
   const [csvParsed, setCsvParsed]     = useState<Partial<Ticket>[]>([])
   const [parseError, setParseError]   = useState<string | null>(null)
   const [importing, setImporting]     = useState(false)
-  const [importResult, setImportResult] = useState<{ inserted: number; updated: number } | null>(null)
+  const [importResult, setImportResult] = useState<{ inserted: number; updated: number; error?: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { copied, copy } = useCopy()
 
@@ -391,6 +391,7 @@ function TicketsTab({ driveUrl }: { driveUrl: string }) {
   const handleImport = async () => {
     if (!csvParsed.length) return
     setImporting(true)
+    setParseError(null)
     try {
       const r = await fetch('/api/trabalho/tickets/import', {
         method: 'POST',
@@ -398,12 +399,16 @@ function TicketsTab({ driveUrl }: { driveUrl: string }) {
         body: JSON.stringify({ tickets: csvParsed }),
       })
       const d = await r.json()
-      setImportResult(d)
-      if ((d.inserted ?? 0) + (d.updated ?? 0) > 0) {
-        fetch_()
-        setTimeout(() => { setShowImport(false); setCsvParsed([]); setImportResult(null) }, 2500)
+      if (d.error) {
+        setParseError(`Erro ao importar: ${d.error}`)
+      } else {
+        setImportResult(d)
+        await fetch_()
+        setTimeout(() => { setShowImport(false); setCsvParsed([]); setImportResult(null) }, 2000)
       }
-    } catch {}
+    } catch (e: any) {
+      setParseError(`Erro: ${e.message}`)
+    }
     setImporting(false)
   }
 
@@ -641,10 +646,10 @@ function TicketsTab({ driveUrl }: { driveUrl: string }) {
             </div>
           )}
 
-          {importResult && (
-            <div style={{ marginTop: 14, background: '#6bcb7715', border: '1px solid #6bcb7730', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>
-              ✅ {importResult.inserted} ticket{importResult.inserted !== 1 ? 's' : ''} importado{importResult.inserted !== 1 ? 's' : ''}
-              {importResult.updated > 0 && `, ${importResult.updated} atualizado${importResult.updated !== 1 ? 's' : ''}`}
+          {importResult && !importResult.error && (
+            <div style={{ marginTop: 14, background: '#6bcb7715', border: '1px solid #6bcb7730', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#6bcb77' }}>
+              ✅ {importResult.inserted ?? 0} ticket{(importResult.inserted ?? 0) !== 1 ? 's' : ''} importado{(importResult.inserted ?? 0) !== 1 ? 's' : ''}
+              {(importResult.updated ?? 0) > 0 && `, ${importResult.updated} atualizado${importResult.updated !== 1 ? 's' : ''}`}
             </div>
           )}
 
