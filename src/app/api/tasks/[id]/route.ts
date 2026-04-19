@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-const ALLOWED_UPDATE_FIELDS = ['title', 'description', 'category', 'priority', 'status', 'due_date']
+const ALLOWED_UPDATE_FIELDS = ['title', 'description', 'category', 'priority', 'status', 'due_date', 'calendar_linked']
 const VALID_CATEGORIES = ['work', 'personal', 'gym', 'study', 'urgent']
 const VALID_PRIORITIES = ['high', 'medium', 'low']
 const VALID_STATUSES = ['todo', 'doing', 'done']
@@ -61,6 +61,48 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     .single()
 
   if (error) return NextResponse.json({ error: 'Failed to update task' }, { status: 500 })
+
+  // Sincronizar evento espelho no calendário (se existir)
+  const { data: linkedEvent } = await admin
+    .from('events')
+    .select('id')
+    .eq('task_id', id)
+    .single()
+
+  if (linkedEvent) {
+    const eventUpdates: Record<string, unknown> = {}
+
+    // Atualizar título no evento
+    if (updates.title) {
+      eventUpdates.title = `📋 ${updates.title}`
+    }
+    // Atualizar descrição
+    if ('description' in updates) {
+      eventUpdates.description = updates.description
+    }
+    // Atualizar categoria
+    if (updates.category) {
+      eventUpdates.category = updates.category
+    }
+    // Atualizar data
+    if (updates.due_date !== undefined) {
+      eventUpdates.event_date = updates.due_date || data?.due_date
+    }
+    // Quando concluída, marcar cor do evento
+    if (updates.status === 'done') {
+      eventUpdates.color = 'done'
+    } else if (updates.status === 'todo' || updates.status === 'doing') {
+      eventUpdates.color = null
+    }
+
+    if (Object.keys(eventUpdates).length > 0) {
+      await admin
+        .from('events')
+        .update(eventUpdates)
+        .eq('id', linkedEvent.id)
+    }
+  }
+
   return NextResponse.json({ task: data })
 }
 
@@ -71,6 +113,10 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const admin = createAdminClient()
+
+  // O evento espelho é removido automaticamente pelo ON DELETE SET NULL,
+  // mas precisamos deletar o evento manualmente pois a FK é na events → tasks
+  await admin.from('events').delete().eq('task_id', id)
 
   const { error } = await admin
     .from('tasks')

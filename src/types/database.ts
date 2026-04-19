@@ -49,6 +49,7 @@ export type Database = {
           priority: string
           status: string
           due_date: string | null
+          calendar_linked: boolean
           created_at: string
           updated_at: string
         }
@@ -61,6 +62,7 @@ export type Database = {
           priority?: string
           status?: string
           due_date?: string | null
+          calendar_linked?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -73,6 +75,7 @@ export type Database = {
           priority?: string
           status?: string
           due_date?: string | null
+          calendar_linked?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -93,6 +96,7 @@ export type Database = {
           gcal_calendar_id: string | null
           source: string
           color: string | null
+          task_id: string | null
           created_at: string
           updated_at: string
         }
@@ -110,6 +114,7 @@ export type Database = {
           gcal_calendar_id?: string | null
           source?: string
           color?: string | null
+          task_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -127,6 +132,7 @@ export type Database = {
           gcal_calendar_id?: string | null
           source?: string
           color?: string | null
+          task_id?: string | null
           created_at?: string
           updated_at?: string
         }

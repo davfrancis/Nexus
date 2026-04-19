@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useTasks } from '@/hooks/useTasks'
 import type { Task } from '@/types/database'
 import ModalPortal from '@/components/ModalPortal'
+import { useRouter } from 'next/navigation'
 
 const COLS = [
   { key: 'todo',  label: 'A Fazer',   color: 'var(--text3)' },
@@ -17,7 +18,10 @@ const CAT_COLORS: Record<string, string> = {
 const PRIORITIES = ['high', 'medium', 'low'] as const
 const CATEGORIES = ['work', 'personal', 'gym', 'study', 'urgent'] as const
 
-const EMPTY_FORM = { title: '', description: '', category: 'work', priority: 'medium', status: 'todo', due_date: '' }
+const EMPTY_FORM = {
+  title: '', description: '', category: 'work', priority: 'medium',
+  status: 'todo', due_date: '', calendar_linked: false,
+}
 
 export default function TasksPage() {
   const { tasks, loading, addTask, updateTask, deleteTask, moveTask } = useTasks()
@@ -25,22 +29,38 @@ export default function TasksPage() {
   const [editing, setEditing] = useState<Task | null>(null)
   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM })
   const [filter, setFilter] = useState<string>('all')
+  const router = useRouter()
 
   const filtered = filter === 'all' ? tasks : tasks.filter(t => t.category === filter)
 
   const openNew = () => { setEditing(null); setForm({ ...EMPTY_FORM }); setShowModal(true) }
   const openEdit = (t: Task) => {
     setEditing(t)
-    setForm({ title: t.title, description: t.description || '', category: t.category, priority: t.priority, status: t.status, due_date: t.due_date || '' })
+    setForm({
+      title: t.title,
+      description: t.description || '',
+      category: t.category,
+      priority: t.priority,
+      status: t.status,
+      due_date: t.due_date || '',
+      calendar_linked: t.calendar_linked ?? false,
+    })
     setShowModal(true)
   }
 
   const handleSave = async () => {
     if (!form.title.trim()) return
+    const payload = {
+      ...form,
+      description: form.description || null,
+      due_date: form.due_date || null,
+      // Se vincular sem data, desativa (data é obrigatória para criar evento)
+      calendar_linked: form.calendar_linked && !!form.due_date,
+    }
     if (editing) {
-      await updateTask(editing.id, { ...form, description: form.description || null, due_date: form.due_date || null })
+      await updateTask(editing.id, payload as any)
     } else {
-      await addTask({ ...form, description: form.description || null, due_date: form.due_date || null } as any)
+      await addTask(payload as any)
     }
     setShowModal(false)
   }
@@ -50,6 +70,14 @@ export default function TasksPage() {
     padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', ...style
   })
 
+  const goToCalendar = (dueDate: string) => {
+    // Navega para agenda — o calendário sempre abre no mês atual, então guardamos a data em sessionStorage
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('agenda_focus_date', dueDate)
+    }
+    router.push('/dashboard/agenda')
+  }
+
   return (
     <div className="page-enter" style={{ padding: 28 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
@@ -57,6 +85,11 @@ export default function TasksPage() {
           <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 26, fontWeight: 700, letterSpacing: -.5 }}>Tarefas</h1>
           <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 4 }}>
             {tasks.filter(t => t.status !== 'done').length} pendentes · {tasks.filter(t => t.status === 'done').length} concluídas
+            {tasks.filter(t => t.calendar_linked).length > 0 && (
+              <span style={{ marginLeft: 10, color: 'var(--accent2)' }}>
+                📅 {tasks.filter(t => t.calendar_linked).length} no calendário
+              </span>
+            )}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -98,11 +131,28 @@ export default function TasksPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 80 }}>
                   {colTasks.map(t => (
                     <div key={t.id}
-                      style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', cursor: 'pointer' }}
+                      style={{
+                        background: 'var(--bg3)',
+                        border: `1px solid ${t.calendar_linked ? 'rgba(124,111,212,.35)' : 'var(--border)'}`,
+                        borderRadius: 10, padding: '12px 14px', cursor: 'pointer',
+                        position: 'relative',
+                      }}
                       onClick={() => openEdit(t)}
                     >
+                      {/* Badge calendário */}
+                      {t.calendar_linked && (
+                        <div style={{
+                          position: 'absolute', top: 8, right: 34,
+                          fontSize: 10, padding: '1px 6px', borderRadius: 100,
+                          background: 'rgba(124,111,212,.15)', color: 'var(--accent2)',
+                          fontWeight: 600, letterSpacing: .3,
+                        }}>
+                          📅 agenda
+                        </div>
+                      )}
+
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                        <span style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.4, flex: 1 }}>{t.title}</span>
+                        <span style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.4, flex: 1, paddingRight: t.calendar_linked ? 64 : 0 }}>{t.title}</span>
                         <button onClick={e => { e.stopPropagation(); deleteTask(t.id) }}
                           style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 12, flexShrink: 0, opacity: .5, padding: 0 }}>✕</button>
                       </div>
@@ -112,12 +162,22 @@ export default function TasksPage() {
                         <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 100, background: 'var(--bg4)', color: t.priority === 'high' ? 'var(--red)' : t.priority === 'medium' ? 'var(--amber)' : 'var(--green)' }}>{t.priority}</span>
                         {t.due_date && <span style={{ fontSize: 10, color: 'var(--text3)' }}>📅 {t.due_date}</span>}
                       </div>
-                      {col.key !== 'done' && (
-                        <button onClick={e => { e.stopPropagation(); moveTask(t.id) }}
-                          style={{ marginTop: 8, width: '100%', padding: '5px 0', borderRadius: 6, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--text3)', fontSize: 11, cursor: 'pointer' }}>
-                          Mover →
-                        </button>
-                      )}
+
+                      {/* Ações */}
+                      <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                        {col.key !== 'done' && (
+                          <button onClick={e => { e.stopPropagation(); moveTask(t.id) }}
+                            style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--text3)', fontSize: 11, cursor: 'pointer' }}>
+                            Mover →
+                          </button>
+                        )}
+                        {t.calendar_linked && t.due_date && (
+                          <button onClick={e => { e.stopPropagation(); goToCalendar(t.due_date!) }}
+                            style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: '1px solid rgba(124,111,212,.4)', background: 'rgba(124,111,212,.08)', color: 'var(--accent2)', fontSize: 11, cursor: 'pointer' }}>
+                            Ver na Agenda
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                   {colTasks.length === 0 && (
@@ -166,15 +226,52 @@ export default function TasksPage() {
               ))}
             </div>
 
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 16 }}>
               <label style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-d)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, display: 'block' }}>Data limite</label>
               <input type="date" value={form.due_date} onChange={e => setForm(p => ({ ...p, due_date: e.target.value }))} style={inp()} />
+            </div>
+
+            {/* Toggle Vincular ao Calendário */}
+            <div
+              onClick={() => setForm(p => ({ ...p, calendar_linked: !p.calendar_linked }))}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20,
+                padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
+                background: form.calendar_linked ? 'rgba(124,111,212,.1)' : 'var(--bg3)',
+                border: `1px solid ${form.calendar_linked ? 'rgba(124,111,212,.4)' : 'var(--border)'}`,
+                transition: 'all .2s',
+              }}
+            >
+              {/* Switch visual */}
+              <div style={{
+                width: 36, height: 20, borderRadius: 10, flexShrink: 0,
+                background: form.calendar_linked ? 'var(--accent)' : 'var(--bg4)',
+                position: 'relative', transition: 'background .2s',
+              }}>
+                <div style={{
+                  position: 'absolute', top: 3, left: form.calendar_linked ? 18 : 3,
+                  width: 14, height: 14, borderRadius: '50%', background: '#fff',
+                  transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,.3)',
+                }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 500, color: form.calendar_linked ? 'var(--accent2)' : 'var(--text)' }}>
+                  📅 Vincular ao Calendário
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
+                  {form.calendar_linked
+                    ? form.due_date
+                      ? 'Evento será criado na data limite'
+                      : '⚠️ Defina uma data limite para vincular'
+                    : 'Criar evento espelho na Agenda'}
+                </div>
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => setShowModal(false)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
               <button onClick={handleSave} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>
-                {editing ? 'Salvar' : 'Criar Tarefa'}
+                {editing ? 'Salvar' : form.calendar_linked && form.due_date ? '📅 Criar e Vincular' : 'Criar Tarefa'}
               </button>
             </div>
           </div>

@@ -13,17 +13,31 @@ const CAT_COLORS: Record<string, string> = {
 }
 
 export default function AgendaPage() {
-  const [viewDate, setViewDate]     = useState(new Date())
+  const [viewDate, setViewDate]       = useState(new Date())
   const [selectedDay, setSelectedDay] = useState(new Date())
-  const [showModal, setShowModal]   = useState(false)
+  const [showModal, setShowModal]     = useState(false)
   const [editingEvent, setEditingEvent] = useState<null | any>(null)
   const [form, setForm] = useState({ title: '', description: '', start_time: '09:00', end_time: '10:00', category: 'work', recurrence: 'none' })
+  const [completingTaskId, setCompletingTaskId] = useState<string | null>(null)
 
   const month = format(viewDate, 'yyyy-MM')
   const { events, loading, syncing, lastSync, syncWithGoogle, addEvent, updateEvent, deleteEvent, getEventsForDate } = useEvents(month)
 
   // Sync automático ao montar
   useEffect(() => { syncWithGoogle() }, [])
+
+  // Foco em data vinda da aba Tarefas (sessionStorage)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const focusDate = sessionStorage.getItem('agenda_focus_date')
+      if (focusDate) {
+        const d = new Date(focusDate + 'T12:00:00')
+        setViewDate(new Date(d.getFullYear(), d.getMonth(), 1))
+        setSelectedDay(d)
+        sessionStorage.removeItem('agenda_focus_date')
+      }
+    }
+  }, [])
 
   const days = eachDayOfInterval({ start: startOfMonth(viewDate), end: endOfMonth(viewDate) })
   const firstDayOffset = getDay(startOfMonth(viewDate))
@@ -47,7 +61,26 @@ export default function AgendaPage() {
     setShowModal(true)
   }
 
+  // Marcar tarefa vinculada como concluída
+  const completeLinkedTask = async (taskId: string, eventId: string) => {
+    setCompletingTaskId(taskId)
+    try {
+      await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'done' }),
+      })
+      // Atualiza cor do evento localmente
+      await updateEvent(eventId, { color: 'done' })
+    } finally {
+      setCompletingTaskId(null)
+    }
+  }
+
   const selectedDayEvents = getEventsForDate(format(selectedDay, 'yyyy-MM-dd'))
+
+  const isTaskEvent = (ev: any) => !!ev.task_id
+  const isTaskDone  = (ev: any) => ev.color === 'done'
 
   return (
     <div style={{ padding: 28 }}>
@@ -107,6 +140,7 @@ export default function AgendaPage() {
               const dayEvts  = getEventsForDate(dateStr)
               const isTodayD = isToday(day)
               const isSel    = isSameDay(day, selectedDay)
+              const hasTask  = dayEvts.some(e => e.task_id)
 
               return (
                 <div
@@ -118,15 +152,31 @@ export default function AgendaPage() {
                     background: isTodayD ? 'var(--accent)' : isSel ? 'rgba(124,111,212,.15)' : 'transparent',
                     border: isSel && !isTodayD ? '1px solid var(--accent2)' : '1px solid transparent',
                     transition: 'all .15s',
+                    position: 'relative',
                   }}
                 >
+                  {/* Indicador de tarefa vinculada */}
+                  {hasTask && !isTodayD && (
+                    <div style={{
+                      position: 'absolute', top: 2, right: 3,
+                      width: 5, height: 5, borderRadius: '50%',
+                      background: 'var(--accent2)', opacity: .8,
+                    }} />
+                  )}
                   <span style={{ fontSize: 12, fontFamily: 'var(--font-d)', fontWeight: 600, color: isTodayD ? '#fff' : 'var(--text2)', lineHeight: 1 }}>
                     {day.getDate()}
                   </span>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 1, width: '100%', marginTop: 3 }}>
                     {dayEvts.slice(0, 2).map(ev => (
-                      <div key={ev.id} style={{ fontSize: 9, padding: '1px 3px', borderRadius: 2, background: `${CAT_COLORS[ev.category] || 'var(--accent)'}30`, color: CAT_COLORS[ev.category] || 'var(--accent2)', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', lineHeight: 1.4 }}>
-                        {ev.title}
+                      <div key={ev.id} style={{
+                        fontSize: 9, padding: '1px 3px', borderRadius: 2,
+                        background: ev.task_id ? 'rgba(124,111,212,.2)' : `${CAT_COLORS[ev.category] || 'var(--accent)'}30`,
+                        color: ev.task_id ? 'var(--accent2)' : (CAT_COLORS[ev.category] || 'var(--accent2)'),
+                        overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', lineHeight: 1.4,
+                        opacity: ev.color === 'done' ? .5 : 1,
+                        textDecoration: ev.color === 'done' ? 'line-through' : 'none',
+                      }}>
+                        {ev.task_id ? '📋' : ''}{ev.title.replace('📋 ', '')}
                       </div>
                     ))}
                     {dayEvts.length > 2 && <div style={{ fontSize: 9, color: 'var(--text3)', paddingLeft: 3 }}>+{dayEvts.length - 2}</div>}
@@ -154,21 +204,60 @@ export default function AgendaPage() {
                 <div style={{ fontSize: 12 }}>Nenhum evento</div>
               </div>
             ) : (
-              <div style={{ maxHeight: 340, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0 }}>
+              <div style={{ maxHeight: 400, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0 }}>
                 {selectedDayEvents.map(ev => (
-                  <div key={ev.id} style={{ display: 'flex', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border)', alignItems: 'flex-start', cursor: 'pointer' }} onClick={() => openEdit(ev)}>
-                    <span style={{ fontFamily: 'var(--font-m)', fontSize: 11, color: 'var(--text3)', width: 44, flexShrink: 0, paddingTop: 2 }}>{ev.start_time?.slice(0,5) || '--'}</span>
-                    <div style={{ width: 3, borderRadius: 3, background: CAT_COLORS[ev.category] || 'var(--accent)', minHeight: 36, flexShrink: 0 }} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500 }}>{ev.title}</div>
-                      {ev.description && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{ev.description}</div>}
-                      <div style={{ display: 'flex', gap: 6, marginTop: 4, alignItems: 'center' }}>
-                        {ev.end_time && <span style={{ fontSize: 10, color: 'var(--text3)' }}>até {ev.end_time.slice(0,5)}</span>}
-                        {ev.gcal_event_id && <span style={{ fontSize: 9, color: 'var(--green)' }}>✓ GCal</span>}
-                        {ev.source === 'gcal' && <span style={{ fontSize: 9, color: 'var(--blue)' }}>● importado</span>}
+                  <div key={ev.id}
+                    style={{
+                      padding: '10px 0', borderBottom: '1px solid var(--border)',
+                      opacity: isTaskDone(ev) ? .6 : 1,
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', cursor: isTaskEvent(ev) ? 'default' : 'pointer' }}
+                      onClick={() => !isTaskEvent(ev) && openEdit(ev)}
+                    >
+                      <span style={{ fontFamily: 'var(--font-m)', fontSize: 11, color: 'var(--text3)', width: 44, flexShrink: 0, paddingTop: 2 }}>{ev.start_time?.slice(0,5) || '--'}</span>
+                      <div style={{
+                        width: 3, borderRadius: 3,
+                        background: ev.task_id ? 'var(--accent2)' : (CAT_COLORS[ev.category] || 'var(--accent)'),
+                        minHeight: 36, flexShrink: 0,
+                      }} />
+                      <div style={{ flex: 1 }}>
+                        {/* Badge tarefa */}
+                        {isTaskEvent(ev) && (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 9, padding: '1px 6px', borderRadius: 100, background: 'rgba(124,111,212,.15)', color: 'var(--accent2)', fontWeight: 600, marginBottom: 4 }}>
+                            📋 TAREFA {isTaskDone(ev) && '· ✓ CONCLUÍDA'}
+                          </div>
+                        )}
+                        <div style={{ fontSize: 13, fontWeight: 500, textDecoration: isTaskDone(ev) ? 'line-through' : 'none' }}>
+                          {ev.title.replace('📋 ', '')}
+                        </div>
+                        {ev.description && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{ev.description}</div>}
+                        <div style={{ display: 'flex', gap: 6, marginTop: 4, alignItems: 'center' }}>
+                          {ev.end_time && <span style={{ fontSize: 10, color: 'var(--text3)' }}>até {ev.end_time.slice(0,5)}</span>}
+                          {ev.gcal_event_id && <span style={{ fontSize: 9, color: 'var(--green)' }}>✓ GCal</span>}
+                          {ev.source === 'gcal' && <span style={{ fontSize: 9, color: 'var(--blue)' }}>● importado</span>}
+                        </div>
                       </div>
+                      {!isTaskEvent(ev) && (
+                        <button onClick={e => { e.stopPropagation(); deleteEvent(ev.id) }} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 12, opacity: .5, padding: 2 }}>✕</button>
+                      )}
                     </div>
-                    <button onClick={e => { e.stopPropagation(); deleteEvent(ev.id) }} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 12, opacity: .5, padding: 2 }}>✕</button>
+
+                    {/* Botão Marcar como Concluída (apenas para tarefas não concluídas) */}
+                    {isTaskEvent(ev) && !isTaskDone(ev) && (
+                      <button
+                        onClick={() => completeLinkedTask(ev.task_id!, ev.id)}
+                        disabled={completingTaskId === ev.task_id}
+                        style={{
+                          marginTop: 8, marginLeft: 59, padding: '5px 12px', borderRadius: 6, fontSize: 11,
+                          border: '1px solid rgba(62,207,160,.4)', background: 'rgba(62,207,160,.08)',
+                          color: 'var(--green)', cursor: 'pointer', fontWeight: 500,
+                          opacity: completingTaskId === ev.task_id ? .5 : 1,
+                        }}
+                      >
+                        {completingTaskId === ev.task_id ? '...' : '✓ Marcar como Concluída'}
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -184,17 +273,17 @@ export default function AgendaPage() {
                 <div style={{ fontSize: 10, color: 'var(--text3)' }}>Total eventos</div>
               </div>
               <div style={{ textAlign: 'center', padding: 12, background: 'var(--bg3)', borderRadius: 8 }}>
-                <div style={{ fontFamily: 'var(--font-d)', fontSize: 24, fontWeight: 700, color: 'var(--green)' }}>
-                  {events.filter(e => e.source === 'gcal').length}
+                <div style={{ fontFamily: 'var(--font-d)', fontSize: 24, fontWeight: 700, color: 'var(--accent2)' }}>
+                  {events.filter(e => e.task_id).length}
                 </div>
-                <div style={{ fontSize: 10, color: 'var(--text3)' }}>Do Google</div>
+                <div style={{ fontSize: 10, color: 'var(--text3)' }}>Tarefas</div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modal novo evento */}
       {showModal && (
         <ModalPortal onClose={() => setShowModal(false)}>
           <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 12, padding: 28, width: 440, maxWidth: 'calc(100% - 32px)', margin: '40px auto' }}>

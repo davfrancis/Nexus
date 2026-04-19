@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createCalendarEvent } from '@/lib/google-calendar'
 
 const VALID_CATEGORIES = ['work', 'personal', 'gym', 'study', 'urgent']
 const VALID_PRIORITIES = ['high', 'medium', 'low']
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
-  const { title, description, category, priority, status, due_date } = body
+  const { title, description, category, priority, status, due_date, calendar_linked } = body
 
   if (!title || typeof title !== 'string' || title.trim().length === 0) {
     return NextResponse.json({ error: 'title is required' }, { status: 400 })
@@ -57,6 +58,8 @@ export async function POST(req: Request) {
   }
 
   const admin = createAdminClient()
+  const shouldLink = calendar_linked === true && !!due_date
+
   const { data, error } = await admin
     .from('tasks')
     .insert({
@@ -67,10 +70,59 @@ export async function POST(req: Request) {
       priority: (priority as string) || 'medium',
       status: (status as string) || 'todo',
       due_date: (due_date as string | null) || null,
+      calendar_linked: shouldLink,
     })
     .select()
     .single()
 
   if (error) return NextResponse.json({ error: 'Failed to create task' }, { status: 500 })
+
+  // Se vinculado ao calendário, criar evento espelho
+  if (shouldLink && data) {
+    const eventInsert = {
+      user_id: user.id,
+      title: `📋 ${(title as string).trim()}`,
+      description: (description as string | null) || null,
+      event_date: due_date as string,
+      start_time: null as string | null,
+      end_time: null as string | null,
+      category: (category as string) || 'work',
+      recurrence: 'none' as const,
+      source: 'local' as const,
+      task_id: data.id,
+    }
+
+    const { data: savedEvent } = await admin
+      .from('events')
+      .insert(eventInsert)
+      .select()
+      .single()
+
+    // Tentar sincronizar com Google Calendar se o usuário tiver token
+    if (savedEvent) {
+      const { data: profile } = await admin
+        .from('profiles')
+        .select('google_access_token')
+        .eq('id', user.id)
+        .single()
+
+      if (profile?.google_access_token) {
+        const gcalResult = await createCalendarEvent(profile.google_access_token, {
+          title: `📋 ${(title as string).trim()}`,
+          description: (description as string) || '',
+          date: due_date as string,
+          startTime: '00:00',
+          endTime: '00:00',
+        })
+        if (gcalResult) {
+          await admin
+            .from('events')
+            .update({ gcal_event_id: gcalResult.gcalEventId, source: 'gcal' })
+            .eq('id', savedEvent.id)
+        }
+      }
+    }
+  }
+
   return NextResponse.json({ task: data })
 }
