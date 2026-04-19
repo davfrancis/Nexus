@@ -1,27 +1,20 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import ModalPortal from '@/components/ModalPortal'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-interface MovideskTicket {
-  id: number
-  subject: string
-  createdDate: string
-  lastUpdate: string
-  statusId: number
-  statusName: string
-  urgencyId: number
-  urgencyName: string
-  clientName: string
-  lastResponder: 'agent' | 'client' | 'none'
-  lastActionDate: string | null
-  lastActionPreview: string | null
-  daysOpen: number
-  url: string
-}
+type TicketStatus   = 'open' | 'in_progress' | 'waiting_client' | 'waiting_vendor' | 'resolved' | 'closed'
+type TicketPriority = 'low' | 'medium' | 'high' | 'critical'
 
+interface Ticket {
+  id: string; ticket_ref: string | null; title: string; client: string | null
+  category: string | null; priority: TicketPriority; status: TicketStatus
+  description: string | null; resolution: string | null; draft_response: string | null
+  notes: string | null; drive_link: string | null
+  opened_at: string; resolved_at: string | null; created_at: string; updated_at: string
+}
 interface KBItem {
   id: string; title: string; client: string | null; category: string | null
   content: string; tags: string | null; drive_link: string | null
@@ -38,15 +31,23 @@ interface Template {
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-const MV_STATUS: Record<number, { label: string; color: string; bg: string }> = {
-  1: { label: 'Novo',          color: '#4d96ff',       bg: '#4d96ff20' },
-  2: { label: 'Em andamento',  color: 'var(--accent)',  bg: 'var(--accent)20' },
-  3: { label: 'Pausado',       color: '#ff9500',        bg: '#ff950020' },
-  4: { label: 'Cancelado',     color: 'var(--text3)',   bg: 'var(--bg3)' },
-  5: { label: 'Resolvido',     color: '#6bcb77',        bg: '#6bcb7720' },
-  6: { label: 'Encerrado',     color: 'var(--text3)',   bg: 'var(--bg3)' },
+const TICKET_STATUS: Record<TicketStatus, { label: string; color: string; bg: string }> = {
+  open:           { label: 'Aberto',         color: '#4d96ff',       bg: '#4d96ff20' },
+  in_progress:    { label: 'Em andamento',    color: 'var(--accent)',  bg: 'var(--accent)20' },
+  waiting_client: { label: 'Ag. cliente',     color: '#ffd93d',       bg: '#ffd93d20' },
+  waiting_vendor: { label: 'Ag. fornecedor',  color: '#ff9500',       bg: '#ff950020' },
+  resolved:       { label: 'Resolvido',       color: '#6bcb77',       bg: '#6bcb7720' },
+  closed:         { label: 'Encerrado',       color: 'var(--text3)',  bg: 'var(--bg3)' },
 }
 
+const TICKET_PRIORITY: Record<TicketPriority, { label: string; color: string }> = {
+  low:      { label: 'Baixa',   color: 'var(--text3)' },
+  medium:   { label: 'Média',   color: '#4d96ff' },
+  high:     { label: 'Alta',    color: '#ffd93d' },
+  critical: { label: 'Crítico', color: '#ff6b6b' },
+}
+
+const TICKET_CATS = ['M365', 'Infraestrutura', 'DevOps', 'Scripts', 'Segurança', 'Redes', 'Outros']
 const KB_CATS     = ['M365', 'Infraestrutura', 'DevOps', 'Scripts', 'Segurança', 'Redes', 'Geral']
 
 const SCRIPT_LANGS = [
@@ -68,25 +69,133 @@ const DEFAULT_TEMPLATES = [
   { title: 'Ag. fornecedor externo',     category: 'Andamento',    content: 'Olá,\n\nO chamado foi escalado para o fornecedor [FORNECEDOR] e estamos aguardando posição deles.\n\nAssim que tivermos uma atualização, entraremos em contato.\n\nAtenciosamente,\nSuporte de TI' },
 ]
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── CSV Import Helpers ──────────────────────────────────────────────────────
 
-function mvBorderColor(t: MovideskTicket): string {
-  if (t.lastResponder === 'client') return '#ff6b6b'
-  if (t.daysOpen >= 8) return '#ff6b6b'
-  if (t.daysOpen >= 5) return '#ff9500'
-  if (t.daysOpen >= 3) return '#ffd93d'
-  return 'var(--border)'
+const CSV_STATUS_MAP: Record<string, TicketStatus> = {
+  'novo': 'open', 'new': 'open', 'aberto': 'open', 'open': 'open',
+  'em andamento': 'in_progress', 'andamento': 'in_progress', 'in progress': 'in_progress',
+  'pausado': 'waiting_vendor', 'paused': 'waiting_vendor',
+  'aguardando': 'waiting_client', 'aguardando cliente': 'waiting_client',
+  'ag. cliente': 'waiting_client', 'ag cliente': 'waiting_client',
+  'aguardando fornecedor': 'waiting_vendor', 'ag. fornecedor': 'waiting_vendor',
+  'resolvido': 'resolved', 'resolved': 'resolved', 'solucionado': 'resolved',
+  'encerrado': 'closed', 'closed': 'closed', 'cancelado': 'closed',
 }
 
-function timeAgo(dateStr: string | null): string {
-  if (!dateStr) return ''
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 2) return 'agora'
-  if (mins < 60) return `${mins}min atrás`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h atrás`
-  return `${Math.floor(hrs / 24)}d atrás`
+const CSV_PRIORITY_MAP: Record<string, TicketPriority> = {
+  'urgente': 'critical', 'critico': 'critical', 'critica': 'critical',
+  'alta': 'high', 'alto': 'high', 'high': 'high',
+  'media': 'medium', 'medio': 'medium', 'normal': 'medium', 'medium': 'medium',
+  'baixa': 'low', 'baixo': 'low', 'low': 'low',
+}
+
+function normStr(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
+}
+
+function findCol(headers: string[], ...candidates: string[]): number {
+  const normed = headers.map(normStr)
+  for (const c of candidates) {
+    const cn = normStr(c)
+    const i = normed.findIndex(h => h === cn || h.includes(cn))
+    if (i >= 0) return i
+  }
+  return -1
+}
+
+function parseBRDate(s: string): string {
+  const m = s.trim().match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/)
+  if (!m) return new Date().toISOString().slice(0, 10)
+  const [, d, mo, y] = m
+  const year = y.length === 2 ? `20${y}` : y
+  return `${year}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`
+}
+
+function parseCSVText(text: string): { headers: string[]; rows: string[][] } {
+  const content = text.replace(/^\uFEFF/, '') // Remove UTF-8 BOM
+  const lines = content.split(/\r?\n/).filter(l => l.trim())
+  if (lines.length < 2) return { headers: [], rows: [] }
+
+  const firstLine = lines[0]
+  const semis  = (firstLine.match(/;/g) ?? []).length
+  const commas = (firstLine.match(/,/g) ?? []).length
+  const delim  = semis >= commas ? ';' : ','
+
+  const parseLine = (line: string): string[] => {
+    const result: string[] = []
+    let cell = '', inQ = false
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i]
+      if (c === '"') {
+        if (inQ && line[i + 1] === '"') { cell += '"'; i++ }
+        else inQ = !inQ
+      } else if (c === delim && !inQ) {
+        result.push(cell.trim()); cell = ''
+      } else cell += c
+    }
+    result.push(cell.trim())
+    return result
+  }
+
+  return { headers: parseLine(lines[0]), rows: lines.slice(1).map(parseLine) }
+}
+
+function csvToTickets(headers: string[], rows: string[][]): Partial<Ticket>[] {
+  const cRef  = findCol(headers, 'numero', 'número', 'nº', 'n°', 'id', 'ticket', '#', 'cod', 'codigo')
+  const cSubj = findCol(headers, 'assunto', 'titulo', 'título', 'subject', 'title', 'assunto do ticket', 'descricao', 'descrição')
+  const cStat = findCol(headers, 'status', 'situacao', 'situação', 'estado')
+  const cCli  = findCol(headers, 'empresa', 'solicitante', 'cliente', 'company', 'organizacao', 'organização', 'nome empresa', 'razao social', 'razão social')
+  const cDate = findCol(headers, 'abertura', 'data abertura', 'data de abertura', 'data criacao', 'criado em', 'criado', 'created', 'date', 'data')
+  const cPri  = findCol(headers, 'urgencia', 'urgência', 'prioridade', 'urgency', 'priority')
+  const cCat  = findCol(headers, 'categoria', 'category', 'tipo', 'type', 'servico', 'serviço')
+  const cNotes = findCol(headers, 'observacao', 'observação', 'notas', 'notes', 'obs')
+
+  return rows
+    .filter(r => r.some(c => c.trim()))
+    .map(r => {
+      const title = cSubj >= 0 ? r[cSubj] : ''
+      if (!title) return null
+
+      const rawStatus = cStat >= 0 ? normStr(r[cStat]) : ''
+      const status: TicketStatus = CSV_STATUS_MAP[rawStatus] ?? 'open'
+
+      const rawPri = cPri >= 0 ? normStr(r[cPri]) : ''
+      const priority: TicketPriority = CSV_PRIORITY_MAP[rawPri] ?? 'medium'
+
+      const rawDate = cDate >= 0 ? r[cDate] : ''
+
+      return {
+        ticket_ref:     cRef >= 0   ? (r[cRef]   || null) : null,
+        title,
+        client:         cCli >= 0   ? (r[cCli]   || null) : null,
+        category:       cCat >= 0   ? (r[cCat]   || null) : null,
+        notes:          cNotes >= 0 ? (r[cNotes] || null) : null,
+        status,
+        priority,
+        opened_at:      rawDate ? parseBRDate(rawDate) : new Date().toISOString().slice(0, 10),
+        description:    null,
+        resolution:     null,
+        draft_response: null,
+        drive_link:     null,
+        resolved_at:    null,
+      } as Partial<Ticket>
+    })
+    .filter(Boolean) as Partial<Ticket>[]
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function daysOpen(openedAt: string): number {
+  return Math.floor((Date.now() - new Date(openedAt + 'T12:00:00').getTime()) / 86400000)
+}
+
+function agingBorderColor(days: number, status: TicketStatus): string {
+  if (status === 'resolved' || status === 'closed') return '#6bcb77'
+  if (status === 'waiting_client' || status === 'waiting_vendor') return '#ffd93d'
+  if (days >= 8) return '#ff6b6b'
+  if (days >= 5) return '#ff9500'
+  if (days >= 3) return '#ffd93d'
+  return 'var(--border)'
 }
 
 function inp(extra: React.CSSProperties = {}): React.CSSProperties {
@@ -108,145 +217,454 @@ function useCopy() {
   return { copied, copy }
 }
 
-// ─── Tickets Tab (Movidesk) ──────────────────────────────────────────────────
+// ─── Tickets Tab ─────────────────────────────────────────────────────────────
 
-type MvGroup = 'all' | 'needs_response' | 'overdue' | 'waiting'
+const EMPTY_TICKET = {
+  ticket_ref: '', title: '', client: '', category: '', priority: 'medium' as TicketPriority,
+  status: 'open' as TicketStatus, description: '', resolution: '', draft_response: '',
+  notes: '', drive_link: '', opened_at: new Date().toISOString().slice(0, 10), resolved_at: '',
+}
 
-function TicketsTab() {
-  const [token, setToken]               = useState('')
-  const [tokenInput, setTokenInput]     = useState('')
-  const [showTokenForm, setShowTokenForm] = useState(false)
-  const [tickets, setTickets]           = useState<MovideskTicket[]>([])
-  const [loading, setLoading]           = useState(false)
-  const [error, setError]               = useState<string | null>(null)
-  const [lastFetched, setLastFetched]   = useState<Date | null>(null)
-  const [group, setGroup]               = useState<MvGroup>('all')
-  const [search, setSearch]             = useState('')
-  const [selected, setSelected]         = useState<MovideskTicket | null>(null)
-  const [draft, setDraft]               = useState('')
-  const [templates, setTemplates]       = useState<Template[]>([])
-  const [showTplPicker, setShowTplPicker] = useState(false)
-  const [cobrarTicket, setCobrarTicket] = useState<MovideskTicket | null>(null)
-  const [cobrarText, setCobrarText]     = useState('')
-  const { copied, copy }                = useCopy()
+function TicketsTab({ driveUrl }: { driveUrl: string }) {
+  const [items, setItems]           = useState<Ticket[]>([])
+  const [loading, setLoading]       = useState(true)
+  const [statusFilter, setStatus]   = useState<TicketStatus | 'all'>('all')
+  const [catFilter, setCat]         = useState('all')
+  const [priFilter, setPri]         = useState('all')
+  const [search, setSearch]         = useState('')
+  const [showModal, setShowModal]   = useState(false)
+  const [editing, setEditing]       = useState<Ticket | null>(null)
+  const [form, setForm]             = useState({ ...EMPTY_TICKET })
+  const [showReport, setShowReport] = useState(false)
+  const [copiedReport, setCopiedReport] = useState(false)
+  const [templatePicker, setTemplatePicker] = useState(false)
+  const [templates, setTemplates]   = useState<Template[]>([])
+  // Cobrar
+  const [cobrarTicket, setCobrarTicket] = useState<Ticket | null>(null)
+  const [cobrarText, setCobrarText] = useState('')
+  // CSV Import
+  const [showImport, setShowImport]   = useState(false)
+  const [csvParsed, setCsvParsed]     = useState<Partial<Ticket>[]>([])
+  const [parseError, setParseError]   = useState<string | null>(null)
+  const [importing, setImporting]     = useState(false)
+  const [importResult, setImportResult] = useState<{ inserted: number; updated: number } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { copied, copy } = useCopy()
 
-  useEffect(() => {
+  const fetch_ = async () => {
+    setLoading(true)
     try {
-      const t = localStorage.getItem('nexus_movidesk_token') ?? ''
-      setToken(t)
-      setTokenInput(t)
+      const [tr, tt] = await Promise.all([
+        fetch('/api/trabalho/tickets').then(r => r.json()),
+        fetch('/api/trabalho/templates').then(r => r.json()),
+      ])
+      setItems(tr.items ?? [])
+      setTemplates(tt.items ?? [])
     } catch {}
-    fetch('/api/trabalho/templates')
-      .then(r => r.json())
-      .then(d => setTemplates(d.items ?? []))
-      .catch(() => {})
-  }, [])
-
-  useEffect(() => { if (token) fetchTickets() }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const fetchTickets = async () => {
-    if (!token) return
-    setLoading(true); setError(null)
-    try {
-      const r = await fetch('/api/trabalho/movidesk', {
-        headers: { 'x-movidesk-token': token },
-      })
-      const d = await r.json()
-      if (d.error) throw new Error(d.error)
-      setTickets(d.tickets ?? [])
-      setLastFetched(new Date())
-    } catch (e: any) { setError(e.message) }
     setLoading(false)
   }
+  useEffect(() => { fetch_() }, [])
 
-  const saveToken = () => {
-    const t = tokenInput.trim()
-    try { localStorage.setItem('nexus_movidesk_token', t) } catch {}
-    setToken(t)
-    setShowTokenForm(false)
+  const filtered = useMemo(() => items.filter(t => {
+    if (statusFilter !== 'all' && t.status !== statusFilter) return false
+    if (catFilter !== 'all' && t.category !== catFilter) return false
+    if (priFilter !== 'all' && t.priority !== priFilter) return false
+    if (search) {
+      const q = search.toLowerCase()
+      if (!t.title.toLowerCase().includes(q) &&
+          !(t.client?.toLowerCase().includes(q)) &&
+          !(t.ticket_ref?.toLowerCase().includes(q))) return false
+    }
+    return true
+  }), [items, statusFilter, catFilter, priFilter, search])
+
+  const stats = useMemo(() => {
+    const active = items.filter(t => t.status !== 'resolved' && t.status !== 'closed')
+    const overdue = active.filter(t => daysOpen(t.opened_at) >= 5)
+    const critical = active.filter(t => t.priority === 'critical' || t.priority === 'high')
+    const waiting  = items.filter(t => t.status === 'waiting_client')
+    const today = new Date().toISOString().slice(0, 10)
+    const resolvedToday = items.filter(t => t.resolved_at === today || (t.status === 'resolved' && t.updated_at?.startsWith(today)))
+    return { active: active.length, overdue: overdue.length, critical: critical.length, waiting: waiting.length, resolvedToday: resolvedToday.length }
+  }, [items])
+
+  const overdueItems = useMemo(() =>
+    items.filter(t => t.status !== 'resolved' && t.status !== 'closed' && daysOpen(t.opened_at) >= 5)
+      .sort((a, b) => daysOpen(b.opened_at) - daysOpen(a.opened_at)),
+    [items]
+  )
+
+  const reportText = useMemo(() => {
+    if (!overdueItems.length) return ''
+    const date = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    const lines = [`RELATÓRIO DE TICKETS EM ATRASO — ${date}`, `${'='.repeat(50)}`, '']
+    overdueItems.forEach((t, i) => {
+      const days = daysOpen(t.opened_at)
+      lines.push(`${i + 1}. [${t.ticket_ref ?? 'SEM REF'}] ${t.title}`)
+      lines.push(`   Cliente:    ${t.client ?? '—'}`)
+      lines.push(`   Categoria:  ${t.category ?? '—'}`)
+      lines.push(`   Prioridade: ${TICKET_PRIORITY[t.priority].label}`)
+      lines.push(`   Status:     ${TICKET_STATUS[t.status].label}`)
+      lines.push(`   Em aberto:  ${days} dia${days !== 1 ? 's' : ''}`)
+      if (t.notes) lines.push(`   Notas:      ${t.notes}`)
+      lines.push('')
+    })
+    return lines.join('\n')
+  }, [overdueItems])
+
+  const openAdd = () => {
+    setEditing(null)
+    setForm({ ...EMPTY_TICKET, opened_at: new Date().toISOString().slice(0, 10) })
+    setShowModal(true)
+  }
+  const openEdit = (t: Ticket) => {
+    setEditing(t)
+    setForm({
+      ticket_ref: t.ticket_ref ?? '', title: t.title, client: t.client ?? '',
+      category: t.category ?? '', priority: t.priority, status: t.status,
+      description: t.description ?? '', resolution: t.resolution ?? '',
+      draft_response: t.draft_response ?? '', notes: t.notes ?? '',
+      drive_link: t.drive_link ?? '', opened_at: t.opened_at,
+      resolved_at: t.resolved_at ?? '',
+    })
+    setShowModal(true)
   }
 
-  const needsResp = useMemo(() => tickets.filter(t => t.lastResponder === 'client'), [tickets])
-  const overdue   = useMemo(() => tickets.filter(t => t.daysOpen >= 5 && ![3, 4, 5, 6].includes(t.statusId)), [tickets])
-  const waiting   = useMemo(() => tickets.filter(t => t.lastResponder === 'agent'), [tickets])
+  const handleSave = async () => {
+    if (!form.title.trim()) return
+    const payload = {
+      ...form,
+      ticket_ref: form.ticket_ref || null, client: form.client || null,
+      category: form.category || null, description: form.description || null,
+      resolution: form.resolution || null, draft_response: form.draft_response || null,
+      notes: form.notes || null, drive_link: form.drive_link || null,
+      resolved_at: form.resolved_at || null,
+    }
+    if (editing) {
+      await fetch('/api/trabalho/tickets', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editing.id, ...payload }) })
+    } else {
+      await fetch('/api/trabalho/tickets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+    }
+    setShowModal(false)
+    fetch_()
+  }
 
-  const filtered = useMemo(() => {
-    const base = group === 'needs_response' ? needsResp
-      : group === 'overdue' ? overdue
-      : group === 'waiting' ? waiting
-      : tickets
-    if (!search) return base
-    const q = search.toLowerCase()
-    return base.filter(t =>
-      t.subject.toLowerCase().includes(q) ||
-      t.clientName.toLowerCase().includes(q) ||
-      String(t.id).includes(q)
-    )
-  }, [tickets, group, search, needsResp, overdue, waiting])
+  const handleDelete = async (id: string) => {
+    await fetch(`/api/trabalho/tickets?id=${id}`, { method: 'DELETE' })
+    setItems(p => p.filter(t => t.id !== id))
+  }
 
-  const openCobrar = (t: MovideskTicket, e: React.MouseEvent) => {
+  const applyTemplate = (tpl: Template) => {
+    setForm(p => ({ ...p, draft_response: tpl.content }))
+    setTemplatePicker(false)
+  }
+
+  const openCobrar = (t: Ticket, e: React.MouseEvent) => {
     e.stopPropagation()
-    setSelected(null)
     setCobrarTicket(t)
     setCobrarText(
-      `Olá, ${t.clientName},\n\nPassamos para dar um retorno sobre o chamado #${t.id} - ${t.subject}.\n\nGostaríamos de confirmar se ainda precisam de auxílio ou se o problema foi resolvido.\n\nPor favor, retorne assim que possível para darmos continuidade ao seu atendimento.\n\nAtenciosamente,\nSuporte de TI`
+      `Olá, ${t.client ?? 'cliente'},\n\nPassamos para dar um retorno sobre o chamado${t.ticket_ref ? ` #${t.ticket_ref}` : ''} - ${t.title}.\n\nGostaríamos de confirmar se ainda precisam de auxílio ou se o problema foi resolvido.\n\nPor favor, retorne assim que possível para darmos continuidade ao seu atendimento.\n\nAtenciosamente,\nSuporte de TI`
     )
   }
 
-  // ── No token ──────────────────────────────────────────────────────────────
-  if (!token && !showTokenForm) {
-    return (
-      <div style={{ maxWidth: 380, margin: '60px auto', textAlign: 'center' }}>
-        <div style={{ fontSize: 40, marginBottom: 16 }}>🎫</div>
-        <div style={{ fontFamily: 'var(--font-d)', fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Conectar ao Movidesk</div>
-        <div style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 24, lineHeight: 1.6 }}>
-          Configure seu token de API para visualizar e gerenciar seus tickets do Movidesk diretamente aqui.
-        </div>
-        <button onClick={() => setShowTokenForm(true)}
-          style={{ padding: '10px 28px', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>
-          Configurar token
-        </button>
-      </div>
-    )
+  // ── CSV Import ──────────────────────────────────────────────────────────
+  const handleCSVFile = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = ev => {
+      const text = ev.target?.result as string
+      const { headers, rows } = parseCSVText(text)
+      if (headers.length === 0) {
+        setParseError('Arquivo inválido. Verifique se é um CSV exportado do Movidesk.')
+        return
+      }
+      const tickets = csvToTickets(headers, rows)
+      if (tickets.length === 0) {
+        setParseError('Nenhum ticket válido detectado. Verifique o arquivo.')
+        return
+      }
+      setCsvParsed(tickets)
+      setParseError(null)
+    }
+    reader.readAsText(file, 'UTF-8')
   }
 
-  // ── Token form ────────────────────────────────────────────────────────────
-  if (showTokenForm) {
+  const handleImport = async () => {
+    if (!csvParsed.length) return
+    setImporting(true)
+    try {
+      const r = await fetch('/api/trabalho/tickets/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tickets: csvParsed }),
+      })
+      const d = await r.json()
+      setImportResult(d)
+      if ((d.inserted ?? 0) + (d.updated ?? 0) > 0) {
+        fetch_()
+        setTimeout(() => { setShowImport(false); setCsvParsed([]); setImportResult(null) }, 2500)
+      }
+    } catch {}
+    setImporting(false)
+  }
+
+  // ── Empty state ─────────────────────────────────────────────────────────
+  if (!loading && items.length === 0) {
     return (
-      <div style={{ maxWidth: 420, margin: '40px auto' }}>
-        <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 14, padding: 28 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <div style={{ fontFamily: 'var(--font-d)', fontSize: 17, fontWeight: 700 }}>Token do Movidesk</div>
-            {token && (
-              <button onClick={() => setShowTokenForm(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 18 }}>✕</button>
-            )}
+      <div>
+        <div style={{ maxWidth: 440, margin: '60px auto', textAlign: 'center' }}>
+          <div style={{ fontSize: 40, marginBottom: 16 }}>📋</div>
+          <div style={{ fontFamily: 'var(--font-d)', fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Nenhum ticket ainda</div>
+          <div style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 28, lineHeight: 1.7 }}>
+            Exporte seus tickets do Movidesk e importe aqui para acompanhar aging, cobrar clientes e gerenciar respostas.
           </div>
-          <Lbl>Token de API</Lbl>
-          <input
-            type="password"
-            value={tokenInput}
-            onChange={e => setTokenInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && saveToken()}
-            placeholder="Cole seu token do Movidesk aqui"
-            style={{ ...inp(), marginBottom: 8 }}
-          />
-          <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 20, lineHeight: 1.6 }}>
-            Movidesk → Configurações → Conta → Integração → Token de API Pessoal
-          </div>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            {token && (
-              <button onClick={() => setShowTokenForm(false)}
-                style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}>
-                Cancelar
-              </button>
-            )}
-            <button onClick={saveToken}
-              style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>
-              Conectar
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+            <button onClick={() => setShowImport(true)}
+              style={{ padding: '11px 24px', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 14, cursor: 'pointer', fontWeight: 700 }}>
+              📥 Importar CSV do Movidesk
+            </button>
+            <button onClick={openAdd}
+              style={{ padding: '11px 20px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg2)', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}>
+              + Adicionar manual
             </button>
           </div>
         </div>
+
+        {/* modals when empty too */}
+        {showModal && renderTicketModal()}
+        {showImport && renderImportModal()}
       </div>
+    )
+  }
+
+  // ── Render helpers ──────────────────────────────────────────────────────
+  function renderTicketModal() {
+    return (
+      <ModalPortal onClose={() => setShowModal(false)}>
+        <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 600, maxWidth: 'calc(100% - 32px)', margin: '32px auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <h2 style={{ fontFamily: 'var(--font-d)', fontSize: 18, fontWeight: 700 }}>{editing ? 'Editar ticket' : 'Novo ticket'}</h2>
+            <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer' }}>✕</button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: 10, marginBottom: 12 }}>
+            <div><Lbl>Nº do ticket</Lbl>
+              <input value={form.ticket_ref} onChange={e => setForm(p => ({ ...p, ticket_ref: e.target.value }))} placeholder="ex: 40144" style={inp()} />
+            </div>
+            <div><Lbl>Título *</Lbl>
+              <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Resumo do problema" style={inp()} />
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 12 }}>
+            <div><Lbl>Cliente</Lbl>
+              <input value={form.client} onChange={e => setForm(p => ({ ...p, client: e.target.value }))} placeholder="Empresa" style={inp()} />
+            </div>
+            <div><Lbl>Categoria</Lbl>
+              <select value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))} style={inp()}>
+                <option value="">–</option>
+                {TICKET_CATS.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div><Lbl>Prioridade</Lbl>
+              <select value={form.priority} onChange={e => setForm(p => ({ ...p, priority: e.target.value as TicketPriority }))} style={inp()}>
+                <option value="low">Baixa</option>
+                <option value="medium">Média</option>
+                <option value="high">Alta</option>
+                <option value="critical">Crítico</option>
+              </select>
+            </div>
+            <div><Lbl>Status</Lbl>
+              <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as TicketStatus }))} style={inp()}>
+                <option value="open">Aberto</option>
+                <option value="in_progress">Em andamento</option>
+                <option value="waiting_client">Ag. cliente</option>
+                <option value="waiting_vendor">Ag. fornecedor</option>
+                <option value="resolved">Resolvido</option>
+                <option value="closed">Encerrado</option>
+              </select>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+            <div><Lbl>Data de abertura</Lbl>
+              <input type="date" value={form.opened_at} onChange={e => setForm(p => ({ ...p, opened_at: e.target.value }))} style={inp()} />
+            </div>
+            <div><Lbl>Data de resolução</Lbl>
+              <input type="date" value={form.resolved_at} onChange={e => setForm(p => ({ ...p, resolved_at: e.target.value }))} style={inp()} />
+            </div>
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <Lbl>Descrição</Lbl>
+            <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+              placeholder="Descreva o problema..." rows={2} style={{ ...inp(), resize: 'vertical', lineHeight: 1.5 }} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <Lbl>Rascunho de resposta ao cliente</Lbl>
+              <button onClick={() => setTemplatePicker(true)}
+                style={{ fontSize: 11, color: 'var(--accent)', background: 'var(--accent)15', border: 'none', borderRadius: 6, padding: '3px 9px', cursor: 'pointer', fontWeight: 600 }}>
+                Usar template
+              </button>
+            </div>
+            <textarea value={form.draft_response} onChange={e => setForm(p => ({ ...p, draft_response: e.target.value }))}
+              placeholder="Rascunhe aqui sua resposta ao cliente..." rows={3} style={{ ...inp(), resize: 'vertical', lineHeight: 1.5 }} />
+            {form.draft_response && (
+              <button onClick={() => navigator.clipboard.writeText(form.draft_response)}
+                style={{ marginTop: 6, fontSize: 11, color: '#6bcb77', background: '#6bcb7715', border: '1px solid #6bcb7730', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}>
+                📋 Copiar resposta
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+            <div><Lbl>Notas internas</Lbl>
+              <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
+                rows={2} placeholder="Anotações..." style={{ ...inp(), resize: 'none', lineHeight: 1.4 }} />
+            </div>
+            <div><Lbl>Link Drive</Lbl>
+              <input value={form.drive_link} onChange={e => setForm(p => ({ ...p, drive_link: e.target.value }))}
+                placeholder="https://drive.google.com/..." style={inp()} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button onClick={() => setShowModal(false)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+            <button onClick={handleSave} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>
+              {editing ? 'Salvar' : 'Criar ticket'}
+            </button>
+          </div>
+        </div>
+      </ModalPortal>
+    )
+  }
+
+  function renderImportModal() {
+    return (
+      <ModalPortal onClose={() => { setShowImport(false); setCsvParsed([]); setParseError(null); setImportResult(null) }}>
+        <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 660, maxWidth: 'calc(100% - 32px)', margin: '32px auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+            <div>
+              <h2 style={{ fontFamily: 'var(--font-d)', fontSize: 18, fontWeight: 700 }}>📥 Importar tickets do Movidesk</h2>
+              <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>
+                Exporte o CSV do Movidesk e faça upload aqui
+              </div>
+            </div>
+            <button onClick={() => { setShowImport(false); setCsvParsed([]); setParseError(null); setImportResult(null) }}
+              style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer' }}>✕</button>
+          </div>
+
+          {/* Steps */}
+          <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px', marginBottom: 18 }}>
+            <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 10 }}>Como exportar do Movidesk</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px' }}>
+              {[
+                'Abra a lista de tickets não resolvidos',
+                'Clique em "Opções" (ícone no topo direito)',
+                'Selecione "Exportar todos os tickets"',
+                'Faça upload do arquivo .csv abaixo',
+              ].map((step, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--text3)' }}>
+                  <span style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--accent)20', color: 'var(--accent)', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{i + 1}</span>
+                  <span>{step}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* File upload */}
+          {csvParsed.length === 0 ? (
+            <div>
+              <input ref={fileInputRef} type="file" accept=".csv,.txt" style={{ display: 'none' }}
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleCSVFile(f); e.target.value = '' }}
+              />
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--accent)' }}
+                onDragLeave={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
+                onDrop={e => {
+                  e.preventDefault()
+                  e.currentTarget.style.borderColor = 'var(--border)'
+                  const f = e.dataTransfer.files[0]
+                  if (f) handleCSVFile(f)
+                }}
+                style={{ border: '2px dashed var(--border)', borderRadius: 10, padding: '36px 24px', textAlign: 'center', cursor: 'pointer', transition: 'border-color .15s' }}>
+                <div style={{ fontSize: 32, marginBottom: 10 }}>📄</div>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Arraste o arquivo CSV aqui ou clique para selecionar</div>
+                <div style={{ fontSize: 11, color: 'var(--text3)' }}>Arquivos .csv exportados do Movidesk</div>
+              </div>
+              {parseError && (
+                <div style={{ marginTop: 12, fontSize: 12, color: '#ff6b6b', background: '#ff6b6b12', border: '1px solid #ff6b6b30', borderRadius: 8, padding: '8px 12px' }}>
+                  ⚠️ {parseError}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>
+                  <span style={{ color: 'var(--accent)' }}>{csvParsed.length}</span> tickets detectados no arquivo
+                </div>
+                <button onClick={() => { setCsvParsed([]); setParseError(null); setImportResult(null) }}
+                  style={{ fontSize: 12, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                  Trocar arquivo
+                </button>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', maxHeight: 260, overflowY: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                  <thead>
+                    <tr style={{ background: 'var(--bg3)' }}>
+                      {['Nº', 'Assunto', 'Cliente', 'Status', 'Prioridade', 'Abertura'].map(h => (
+                        <th key={h} style={{ padding: '7px 10px', textAlign: 'left', color: 'var(--text3)', fontWeight: 600, fontSize: 10, textTransform: 'uppercase', letterSpacing: .5, whiteSpace: 'nowrap' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {csvParsed.slice(0, 15).map((t, i) => {
+                      const sc = TICKET_STATUS[t.status!]
+                      const pc = TICKET_PRIORITY[t.priority!]
+                      return (
+                        <tr key={i} style={{ borderTop: '1px solid var(--border)' }}>
+                          <td style={{ padding: '6px 10px', fontFamily: 'monospace', color: 'var(--text3)' }}>{t.ticket_ref ?? '—'}</td>
+                          <td style={{ padding: '6px 10px', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</td>
+                          <td style={{ padding: '6px 10px', color: 'var(--text3)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.client ?? '—'}</td>
+                          <td style={{ padding: '6px 10px' }}><span style={{ color: sc.color, fontWeight: 600 }}>{sc.label}</span></td>
+                          <td style={{ padding: '6px 10px' }}><span style={{ color: pc.color }}>{pc.label}</span></td>
+                          <td style={{ padding: '6px 10px', color: 'var(--text3)' }}>{t.opened_at}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+                {csvParsed.length > 15 && (
+                  <div style={{ padding: '8px 10px', fontSize: 11, color: 'var(--text3)', background: 'var(--bg3)', textAlign: 'center' }}>
+                    …e mais {csvParsed.length - 15} tickets
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {importResult && (
+            <div style={{ marginTop: 14, background: '#6bcb7715', border: '1px solid #6bcb7730', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>
+              ✅ {importResult.inserted} ticket{importResult.inserted !== 1 ? 's' : ''} importado{importResult.inserted !== 1 ? 's' : ''}
+              {importResult.updated > 0 && `, ${importResult.updated} atualizado${importResult.updated !== 1 ? 's' : ''}`}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center', marginTop: 20 }}>
+            <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+              Tickets já existentes (mesmo nº) terão o status atualizado
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => { setShowImport(false); setCsvParsed([]); setParseError(null); setImportResult(null) }}
+                style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}>
+                Cancelar
+              </button>
+              <button onClick={handleImport} disabled={csvParsed.length === 0 || importing}
+                style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: csvParsed.length === 0 ? 'var(--bg3)' : 'var(--accent)', color: csvParsed.length === 0 ? 'var(--text3)' : '#fff', fontSize: 13, cursor: csvParsed.length === 0 ? 'default' : 'pointer', fontWeight: 600 }}>
+                {importing ? 'Importando…' : csvParsed.length > 0 ? `Importar ${csvParsed.length} tickets` : 'Importar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </ModalPortal>
     )
   }
 
@@ -254,138 +672,121 @@ function TicketsTab() {
   return (
     <div>
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 20 }}>
         {[
-          { label: 'Total abertos',   val: tickets.length,   color: 'var(--text)' },
-          { label: 'Resp. pendente',  val: needsResp.length, color: needsResp.length > 0 ? '#ff6b6b' : 'var(--text3)' },
-          { label: 'Em atraso (+5d)', val: overdue.length,   color: overdue.length > 0  ? '#ff9500' : 'var(--text3)' },
-          { label: 'Ag. cliente',     val: waiting.length,   color: '#ffd93d' },
-          { label: 'Atualizado',      val: lastFetched
-              ? lastFetched.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-              : '—',
-            color: 'var(--text3)', small: true },
+          { label: 'Ativos',          val: stats.active,        color: '#4d96ff' },
+          { label: 'Crítico/Alto',    val: stats.critical,      color: '#ff6b6b' },
+          { label: 'Venc. +5 dias',   val: stats.overdue,       color: stats.overdue > 0 ? '#ff9500' : '#6bcb77' },
+          { label: 'Ag. cliente',     val: stats.waiting,       color: '#ffd93d' },
+          { label: 'Resolvidos hoje', val: stats.resolvedToday, color: '#6bcb77' },
         ].map(s => (
           <div key={s.label} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px' }}>
             <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: .5, marginBottom: 4 }}>{s.label}</div>
-            <div style={{ fontSize: (s as any).small ? 17 : 22, fontWeight: 700, color: s.color, fontFamily: 'var(--font-d)' }}>{s.val}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: s.color, fontFamily: 'var(--font-d)' }}>{s.val}</div>
           </div>
         ))}
       </div>
 
-      {/* Alert: client responded */}
-      {needsResp.length > 0 && (
-        <div style={{ background: '#ff6b6b12', border: '1px solid #ff6b6b35', borderRadius: 10, padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 13, color: '#ff6b6b', flex: 1 }}>
-            🗣️ <strong>{needsResp.length}</strong> ticket{needsResp.length > 1 ? 's' : ''} com resposta do cliente aguardando sua atenção
+      {/* Overdue alert */}
+      {stats.overdue > 0 && (
+        <div style={{ background: '#ff950015', border: '1px solid #ff950040', borderRadius: 10, padding: '10px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 13, color: '#ff9500' }}>
+            ⚠️ <strong>{stats.overdue}</strong> ticket{stats.overdue > 1 ? 's' : ''} com mais de 5 dias sem resolução
           </span>
-          <button onClick={() => setGroup('needs_response')}
-            style={{ fontSize: 12, color: '#ff6b6b', background: '#ff6b6b20', border: '1px solid #ff6b6b40', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontWeight: 600, flexShrink: 0 }}>
-            Ver todos
+          <button onClick={() => setShowReport(true)}
+            style={{ fontSize: 12, color: '#ff9500', background: '#ff950020', border: '1px solid #ff950040', borderRadius: 8, padding: '5px 12px', cursor: 'pointer', fontWeight: 600 }}>
+            Ver relatório
           </button>
         </div>
       )}
 
-      {/* Filters row */}
+      {/* Filters */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: 3, background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, padding: 3 }}>
-          {([
-            { id: 'all'            as MvGroup, label: `Todos (${tickets.length})` },
-            { id: 'needs_response' as MvGroup, label: `Responder (${needsResp.length})`, alert: needsResp.length > 0 },
-            { id: 'overdue'        as MvGroup, label: `Atrasados (${overdue.length})`,   warn: overdue.length > 0 },
-            { id: 'waiting'        as MvGroup, label: `Ag. cliente (${waiting.length})` },
-          ]).map(g => (
-            <button key={g.id} onClick={() => setGroup(g.id)}
-              style={{
-                padding: '5px 10px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600,
-                background: group === g.id
-                  ? ((g as any).alert ? '#ff6b6b' : (g as any).warn ? '#ff9500' : 'var(--accent)')
-                  : 'transparent',
-                color: group === g.id ? '#fff'
-                  : (g as any).alert ? '#ff6b6b' : (g as any).warn ? '#ff9500' : 'var(--text3)',
-              }}>
-              {g.label}
-            </button>
-          ))}
-        </div>
-        <input
-          value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar por título, cliente, nº..."
-          style={inp({ width: 220, padding: '6px 10px', fontSize: 12 })}
-        />
+        <select value={statusFilter} onChange={e => setStatus(e.target.value as any)} style={inp({ width: 'auto', padding: '6px 10px', fontSize: 12, cursor: 'pointer' })}>
+          <option value="all">Todos os status</option>
+          {(Object.entries(TICKET_STATUS) as [TicketStatus, typeof TICKET_STATUS[TicketStatus]][]).map(([k, v]) =>
+            <option key={k} value={k}>{v.label}</option>
+          )}
+        </select>
+        <select value={catFilter} onChange={e => setCat(e.target.value)} style={inp({ width: 'auto', padding: '6px 10px', fontSize: 12, cursor: 'pointer' })}>
+          <option value="all">Todas as categorias</option>
+          {TICKET_CATS.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select value={priFilter} onChange={e => setPri(e.target.value)} style={inp({ width: 'auto', padding: '6px 10px', fontSize: 12, cursor: 'pointer' })}>
+          <option value="all">Todas as prioridades</option>
+          {(Object.entries(TICKET_PRIORITY) as [TicketPriority, typeof TICKET_PRIORITY[TicketPriority]][]).map(([k, v]) =>
+            <option key={k} value={k}>{v.label}</option>
+          )}
+        </select>
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar ref, título, cliente..."
+          style={inp({ width: 200, padding: '6px 10px', fontSize: 12 })} />
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
-          <button onClick={fetchTickets} disabled={loading}
-            style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg2)', color: loading ? 'var(--text3)' : 'var(--text)', fontSize: 12, cursor: loading ? 'default' : 'pointer' }}>
-            {loading ? '↻ Carregando…' : '↻ Atualizar'}
+          <button onClick={() => { setCsvParsed([]); setShowImport(true) }}
+            style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--accent)40', background: 'var(--accent)15', color: 'var(--accent)', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+            📥 Importar CSV
           </button>
-          <button onClick={() => setShowTokenForm(true)} title="Alterar token Movidesk"
-            style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg2)', color: 'var(--text3)', fontSize: 12, cursor: 'pointer' }}>
-            ⚙️
+          <button onClick={openAdd}
+            style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+            + Novo ticket
           </button>
         </div>
       </div>
 
-      {/* Error banner */}
-      {error && (
-        <div style={{ background: '#ff6b6b12', border: '1px solid #ff6b6b35', borderRadius: 10, padding: '12px 16px', marginBottom: 14, fontSize: 13, color: '#ff6b6b' }}>
-          ⚠️ Erro: {error}
-          <button onClick={fetchTickets}
-            style={{ marginLeft: 12, fontSize: 12, color: '#ff6b6b', background: '#ff6b6b20', border: 'none', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>
-            Tentar novamente
-          </button>
-        </div>
-      )}
-
       {/* Ticket list */}
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {[0, 1, 2, 3, 4].map(i => <div key={i} className="skeleton" style={{ height: 76, borderRadius: 10 }} />)}
+          {[0,1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 70, borderRadius: 10 }} />)}
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 50, color: 'var(--text3)', fontSize: 13 }}>
-          {tickets.length === 0
-            ? 'Nenhum ticket aberto no Movidesk.'
-            : 'Nenhum ticket encontrado com os filtros selecionados.'}
+          Nenhum ticket com os filtros selecionados.
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {filtered.map(t => {
-            const bc = mvBorderColor(t)
-            const st = MV_STATUS[t.statusId] ?? { label: t.statusName, color: 'var(--text3)', bg: 'var(--bg3)' }
-            const isClient = t.lastResponder === 'client'
+            const days = daysOpen(t.opened_at)
+            const borderColor = agingBorderColor(days, t.status)
+            const sc = TICKET_STATUS[t.status]
+            const pc = TICKET_PRIORITY[t.priority]
+            const isActive = t.status !== 'resolved' && t.status !== 'closed'
+            const isWaiting = t.status === 'waiting_client'
             return (
-              <div key={t.id} onClick={() => { setSelected(t); setDraft('') }}
-                style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderLeft: `4px solid ${bc}`, borderRadius: 10, padding: '12px 16px', cursor: 'pointer', transition: 'background .1s' }}
+              <div key={t.id} onClick={() => openEdit(t)}
+                style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderLeft: `4px solid ${borderColor}`, borderRadius: 10, padding: '12px 16px', cursor: 'pointer', transition: 'background .1s' }}
                 onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg3)')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'var(--bg2)')}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <a href={t.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
-                    style={{ fontSize: 11, color: 'var(--accent)', background: 'var(--accent)15', padding: '2px 7px', borderRadius: 6, fontFamily: 'monospace', flexShrink: 0, textDecoration: 'none', fontWeight: 600 }}>
-                    #{t.id}
-                  </a>
-                  <span style={{ fontSize: 13, fontWeight: 600, flex: 1, minWidth: 120 }}>{t.subject}</span>
-                  <span style={{ fontSize: 11, color: 'var(--text3)', flexShrink: 0 }}>{t.clientName}</span>
-                  <span style={{ fontSize: 10, background: st.bg, color: st.color, padding: '2px 8px', borderRadius: 8, fontWeight: 600, flexShrink: 0 }}>{st.label}</span>
-                  <span style={{ fontSize: 11, color: bc === 'var(--border)' ? 'var(--text3)' : bc, fontWeight: t.daysOpen >= 5 ? 700 : 400, flexShrink: 0 }}>
-                    {t.daysOpen}d
-                  </span>
-                  {isClient && (
+                  {t.ticket_ref && (
+                    <span style={{ fontSize: 11, color: 'var(--text3)', background: 'var(--bg3)', padding: '2px 7px', borderRadius: 6, fontFamily: 'monospace', flexShrink: 0 }}>
+                      #{t.ticket_ref}
+                    </span>
+                  )}
+                  <span style={{ fontSize: 13, fontWeight: 600, flex: 1, minWidth: 120 }}>{t.title}</span>
+                  {t.client && <span style={{ fontSize: 11, color: 'var(--text3)', flexShrink: 0 }}>{t.client}</span>}
+                  {t.category && <span style={{ fontSize: 10, color: 'var(--accent)', background: 'var(--accent)15', padding: '2px 7px', borderRadius: 8, flexShrink: 0 }}>{t.category}</span>}
+                  <span style={{ fontSize: 11, color: pc.color, fontWeight: 700, flexShrink: 0 }}>{pc.label}</span>
+                  <span style={{ fontSize: 11, background: sc.bg, color: sc.color, padding: '3px 8px', borderRadius: 8, fontWeight: 600, flexShrink: 0 }}>{sc.label}</span>
+                  {isActive && (
+                    <span style={{ fontSize: 11, color: borderColor === 'var(--border)' ? 'var(--text3)' : borderColor, fontWeight: days >= 5 ? 700 : 400, flexShrink: 0 }}>
+                      {days}d
+                    </span>
+                  )}
+                  {isWaiting && (
                     <button onClick={e => openCobrar(t, e)}
-                      style={{ fontSize: 10, color: '#ff6b6b', background: '#ff6b6b15', border: '1px solid #ff6b6b40', borderRadius: 6, padding: '3px 9px', cursor: 'pointer', fontWeight: 700, flexShrink: 0 }}>
+                      style={{ fontSize: 10, color: '#ffd93d', background: '#ffd93d15', border: '1px solid #ffd93d40', borderRadius: 6, padding: '3px 9px', cursor: 'pointer', fontWeight: 700, flexShrink: 0 }}>
                       Cobrar
                     </button>
                   )}
+                  {t.drive_link && (
+                    <a href={t.drive_link} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
+                      style={{ fontSize: 12, color: 'var(--text3)', flexShrink: 0 }} title="Drive">📁</a>
+                  )}
+                  <button onClick={e => { e.stopPropagation(); handleDelete(t.id) }}
+                    style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 11, opacity: .4, flexShrink: 0, padding: '0 2px' }}>✕</button>
                 </div>
-                {t.lastActionPreview && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
-                    <span style={{ fontSize: 10, color: isClient ? '#ff6b6b' : 'var(--text3)', fontWeight: 700, flexShrink: 0 }}>
-                      {isClient ? '🗣️ Cliente:' : '✓ Agente:'}
-                    </span>
-                    <span style={{ fontSize: 11, color: 'var(--text3)', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flex: 1 }}>
-                      {t.lastActionPreview}
-                    </span>
-                    <span style={{ fontSize: 10, color: 'var(--text3)', flexShrink: 0, opacity: .7 }}>
-                      {timeAgo(t.lastActionDate)}
-                    </span>
+                {t.notes && (
+                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 5, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                    {t.notes}
                   </div>
                 )}
               </div>
@@ -394,116 +795,27 @@ function TicketsTab() {
         </div>
       )}
 
-      {/* ── Ticket detail modal ── */}
-      {selected && (
-        <ModalPortal onClose={() => setSelected(null)}>
-          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 620, maxWidth: 'calc(100% - 32px)', margin: '32px auto' }}>
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
-              <div style={{ flex: 1, marginRight: 16 }}>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
-                  <a href={selected.url} target="_blank" rel="noreferrer"
-                    style={{ fontSize: 12, color: '#fff', background: 'var(--accent)', padding: '4px 12px', borderRadius: 8, fontWeight: 700, textDecoration: 'none', fontFamily: 'monospace' }}>
-                    #{selected.id} ↗
-                  </a>
-                  {(() => {
-                    const st = MV_STATUS[selected.statusId] ?? { label: selected.statusName, color: 'var(--text3)', bg: 'var(--bg3)' }
-                    return <span style={{ fontSize: 11, background: st.bg, color: st.color, padding: '3px 9px', borderRadius: 8, fontWeight: 600 }}>{st.label}</span>
-                  })()}
-                  <span style={{ fontSize: 11, color: selected.daysOpen >= 5 ? '#ff9500' : 'var(--text3)', fontWeight: selected.daysOpen >= 5 ? 700 : 400 }}>
-                    {selected.daysOpen}d aberto
-                  </span>
-                </div>
-                <div style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.3, marginBottom: 8 }}>{selected.subject}</div>
-                <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 12, color: 'var(--text3)' }}>👤 {selected.clientName}</span>
-                  <span style={{ fontSize: 12, color: 'var(--text3)' }}>⚡ {selected.urgencyName}</span>
-                  <span style={{ fontSize: 12, color: 'var(--text3)' }}>📅 {new Date(selected.createdDate).toLocaleDateString('pt-BR')}</span>
-                </div>
-              </div>
-              <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer', flexShrink: 0 }}>✕</button>
-            </div>
-
-            {/* Last action */}
-            {selected.lastActionPreview && (
-              <div style={{
-                background: selected.lastResponder === 'client' ? '#ff6b6b0e' : 'var(--bg3)',
-                border: `1px solid ${selected.lastResponder === 'client' ? '#ff6b6b30' : 'var(--border)'}`,
-                borderRadius: 10, padding: '10px 14px', marginBottom: 16,
-              }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: selected.lastResponder === 'client' ? '#ff6b6b' : 'var(--text3)', marginBottom: 4 }}>
-                  {selected.lastResponder === 'client' ? '🗣️ Última resposta: CLIENTE' : '✓ Última resposta: AGENTE'}
-                  {selected.lastActionDate && (
-                    <span style={{ fontWeight: 400, marginLeft: 8, opacity: .7 }}>{timeAgo(selected.lastActionDate)}</span>
-                  )}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.5 }}>{selected.lastActionPreview}</div>
-              </div>
-            )}
-
-            {/* Draft response */}
-            <div style={{ marginBottom: 18 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <Lbl>Rascunho de resposta</Lbl>
-                <button onClick={() => setShowTplPicker(true)}
-                  style={{ fontSize: 11, color: 'var(--accent)', background: 'var(--accent)15', border: 'none', borderRadius: 6, padding: '3px 9px', cursor: 'pointer', fontWeight: 600 }}>
-                  Usar template
-                </button>
-              </div>
-              <textarea value={draft} onChange={e => setDraft(e.target.value)}
-                placeholder="Escreva aqui sua resposta para o cliente..." rows={4}
-                style={{ ...inp(), resize: 'vertical', lineHeight: 1.5 }} />
-              {draft && (
-                <button onClick={() => copy('draft', draft)}
-                  style={{ marginTop: 6, fontSize: 11, color: copied === 'draft' ? '#6bcb77' : 'var(--text3)', background: copied === 'draft' ? '#6bcb7715' : 'var(--bg3)', border: `1px solid ${copied === 'draft' ? '#6bcb7730' : 'var(--border)'}`, borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}>
-                  {copied === 'draft' ? '✓ Copiado!' : '📋 Copiar resposta'}
-                </button>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center' }}>
-              <button onClick={e => openCobrar(selected, e)}
-                style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #ff6b6b35', background: '#ff6b6b12', color: '#ff6b6b', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
-                📢 Cobrar cliente
-              </button>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <a href={selected.url} target="_blank" rel="noreferrer"
-                  style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--accent)35', background: 'var(--accent)15', color: 'var(--accent)', fontSize: 12, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  Abrir no Movidesk ↗
-                </a>
-                <button onClick={() => setSelected(null)}
-                  style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}>
-                  Fechar
-                </button>
-              </div>
-            </div>
-          </div>
-        </ModalPortal>
-      )}
+      {/* Ticket modal */}
+      {showModal && renderTicketModal()}
 
       {/* Template picker */}
-      {showTplPicker && (
-        <ModalPortal onClose={() => setShowTplPicker(false)}>
+      {templatePicker && (
+        <ModalPortal onClose={() => setTemplatePicker(false)}>
           <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 12, padding: 24, width: 480, maxWidth: 'calc(100% - 32px)', margin: '100px auto', maxHeight: 'calc(100vh - 200px)', overflow: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
               <div style={{ fontWeight: 700, fontSize: 15 }}>Selecionar template</div>
-              <button onClick={() => setShowTplPicker(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 18 }}>✕</button>
+              <button onClick={() => setTemplatePicker(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 18 }}>✕</button>
             </div>
             {templates.length === 0 ? (
-              <div style={{ color: 'var(--text3)', fontSize: 13, textAlign: 'center', padding: 20 }}>
-                Nenhum template. Crie na aba Templates.
-              </div>
+              <div style={{ color: 'var(--text3)', fontSize: 13, textAlign: 'center', padding: 20 }}>Nenhum template. Crie na aba Templates.</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {templates.map(tpl => (
-                  <button key={tpl.id} onClick={() => { setDraft(tpl.content); setShowTplPicker(false) }}
+                {templates.map(t => (
+                  <button key={t.id} onClick={() => applyTemplate(t)}
                     style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', cursor: 'pointer', textAlign: 'left' }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{tpl.title}</div>
-                    {tpl.category && <div style={{ fontSize: 11, color: 'var(--accent)', marginTop: 2 }}>{tpl.category}</div>}
-                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-                      {tpl.content.split('\n')[0]}
-                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{t.title}</div>
+                    {t.category && <div style={{ fontSize: 11, color: 'var(--accent)', marginTop: 2 }}>{t.category}</div>}
+                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{t.content.split('\n')[0]}</div>
                   </button>
                 ))}
               </div>
@@ -512,6 +824,63 @@ function TicketsTab() {
         </ModalPortal>
       )}
 
+      {/* Overdue report */}
+      {showReport && (
+        <ModalPortal onClose={() => setShowReport(false)}>
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 600, maxWidth: 'calc(100% - 32px)', margin: '32px auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div>
+                <div style={{ fontFamily: 'var(--font-d)', fontSize: 17, fontWeight: 700 }}>⚠️ Tickets em atraso</div>
+                <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>{overdueItems.length} ticket{overdueItems.length > 1 ? 's' : ''} com mais de 5 dias</div>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => { navigator.clipboard.writeText(reportText); setCopiedReport(true); setTimeout(() => setCopiedReport(false), 2000) }}
+                  style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: copiedReport ? '#6bcb77' : 'var(--accent)', color: '#fff', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+                  {copiedReport ? '✓ Copiado!' : '📋 Copiar relatório'}
+                </button>
+                <button onClick={() => setShowReport(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 18 }}>✕</button>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {overdueItems.map(t => {
+                const days = daysOpen(t.opened_at)
+                const pc = TICKET_PRIORITY[t.priority]
+                const sc = TICKET_STATUS[t.status]
+                return (
+                  <div key={t.id} style={{ background: 'var(--bg3)', borderRadius: 10, padding: '12px 16px', borderLeft: `4px solid ${days >= 8 ? '#ff6b6b' : '#ff9500'}` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>
+                          {t.ticket_ref && <span style={{ fontFamily: 'monospace', color: 'var(--text3)', marginRight: 8 }}>#{t.ticket_ref}</span>}
+                          {t.title}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 3 }}>
+                          {t.client && <span style={{ marginRight: 10 }}>{t.client}</span>}
+                          {t.category && <span style={{ color: 'var(--accent)', marginRight: 10 }}>{t.category}</span>}
+                          <span style={{ color: pc.color, fontWeight: 600 }}>{pc.label}</span>
+                        </div>
+                        {t.notes && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, fontStyle: 'italic' }}>{t.notes}</div>}
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: days >= 8 ? '#ff6b6b' : '#ff9500', fontFamily: 'var(--font-d)' }}>{days}d</div>
+                        <div style={{ fontSize: 10, color: sc.color }}>{sc.label}</div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <div style={{ marginTop: 16, background: 'var(--bg3)', borderRadius: 8, padding: 12 }}>
+              <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5 }}>Prévia para copiar</div>
+              <pre style={{ fontSize: 11, color: 'var(--text3)', lineHeight: 1.5, whiteSpace: 'pre-wrap', margin: 0, maxHeight: 180, overflow: 'auto' }}>{reportText}</pre>
+            </div>
+          </div>
+        </ModalPortal>
+      )}
+
+      {/* Import modal */}
+      {showImport && renderImportModal()}
+
       {/* Cobrar modal */}
       {cobrarTicket && (
         <ModalPortal onClose={() => setCobrarTicket(null)}>
@@ -519,7 +888,9 @@ function TicketsTab() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div>
                 <div style={{ fontFamily: 'var(--font-d)', fontSize: 16, fontWeight: 700 }}>📢 Cobrar cliente</div>
-                <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>#{cobrarTicket.id} — {cobrarTicket.clientName}</div>
+                <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
+                  {cobrarTicket.ticket_ref && `#${cobrarTicket.ticket_ref} — `}{cobrarTicket.client ?? cobrarTicket.title}
+                </div>
               </div>
               <button onClick={() => setCobrarTicket(null)} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 18, cursor: 'pointer' }}>✕</button>
             </div>
@@ -607,12 +978,9 @@ function ScriptsTab() {
 
   return (
     <div>
-      {/* Filters */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: 4, background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, padding: 3 }}>
-          <button onClick={() => setLang('all')} style={{ padding: '5px 10px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 500, background: langFilter === 'all' ? 'var(--accent)' : 'transparent', color: langFilter === 'all' ? '#fff' : 'var(--text3)' }}>
-            Todos
-          </button>
+          <button onClick={() => setLang('all')} style={{ padding: '5px 10px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 500, background: langFilter === 'all' ? 'var(--accent)' : 'transparent', color: langFilter === 'all' ? '#fff' : 'var(--text3)' }}>Todos</button>
           {SCRIPT_LANGS.map(l => (
             <button key={l.id} onClick={() => setLang(l.id)}
               style={{ padding: '5px 10px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 500, background: langFilter === l.id ? l.color : 'transparent', color: langFilter === l.id ? '#fff' : 'var(--text3)' }}>
@@ -626,19 +994,12 @@ function ScriptsTab() {
             {usedCats.map(c => <option key={c as string} value={c as string}>{c}</option>)}
           </select>
         )}
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar scripts..."
-          style={inp({ width: 180, padding: '6px 10px', fontSize: 12 })} />
-        <button onClick={openAdd}
-          style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
-          + Novo script
-        </button>
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar scripts..." style={inp({ width: 180, padding: '6px 10px', fontSize: 12 })} />
+        <button onClick={openAdd} style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>+ Novo script</button>
       </div>
 
-      {/* Script list */}
       {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {[0,1,2].map(i => <div key={i} className="skeleton" style={{ height: 90, borderRadius: 10 }} />)}
-        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{[0,1,2].map(i => <div key={i} className="skeleton" style={{ height: 90, borderRadius: 10 }} />)}</div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 50, color: 'var(--text3)', fontSize: 13 }}>
           {items.length === 0 ? 'Nenhum script ainda. Armazene seus scripts PowerShell, Bash, etc.' : 'Nenhum script encontrado.'}
@@ -651,8 +1012,7 @@ function ScriptsTab() {
             const preview = s.content.split('\n').slice(0, 4).join('\n')
             return (
               <div key={s.id} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderLeft: `3px solid ${lc.color}`, borderRadius: 10, overflow: 'hidden' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', cursor: 'pointer' }}
-                  onClick={() => setExpanded(isOpen ? null : s.id)}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', cursor: 'pointer' }} onClick={() => setExpanded(isOpen ? null : s.id)}>
                   <span style={{ fontSize: 10, background: lc.color + '25', color: lc.color, padding: '3px 8px', borderRadius: 6, fontWeight: 700, flexShrink: 0 }}>{lc.label}</span>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{s.title}</div>
@@ -663,20 +1023,15 @@ function ScriptsTab() {
                     style={{ padding: '5px 10px', borderRadius: 7, border: `1px solid ${copied === s.id ? '#6bcb77' : 'var(--border)'}`, background: copied === s.id ? '#6bcb7720' : 'var(--bg3)', color: copied === s.id ? '#6bcb77' : 'var(--text3)', fontSize: 11, cursor: 'pointer', fontWeight: 600, flexShrink: 0 }}>
                     {copied === s.id ? '✓ Copiado!' : '📋 Copiar'}
                   </button>
-                  <button onClick={e => { e.stopPropagation(); openEdit(s) }}
-                    style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 11, opacity: .6 }}>✏️</button>
-                  <button onClick={e => { e.stopPropagation(); handleDelete(s.id) }}
-                    style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 11, opacity: .4 }}>✕</button>
+                  <button onClick={e => { e.stopPropagation(); openEdit(s) }} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 11, opacity: .6 }}>✏️</button>
+                  <button onClick={e => { e.stopPropagation(); handleDelete(s.id) }} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 11, opacity: .4 }}>✕</button>
                   <span style={{ color: 'var(--text3)', fontSize: 11 }}>{isOpen ? '▲' : '▼'}</span>
                 </div>
-                {isOpen && (
+                {isOpen ? (
                   <div style={{ borderTop: '1px solid var(--border)', background: 'var(--bg3)' }}>
-                    <pre style={{ margin: 0, padding: '14px 16px', fontSize: 12, lineHeight: 1.6, color: 'var(--text)', fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all', maxHeight: 400, overflow: 'auto' }}>
-                      {s.content}
-                    </pre>
+                    <pre style={{ margin: 0, padding: '14px 16px', fontSize: 12, lineHeight: 1.6, color: 'var(--text)', fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all', maxHeight: 400, overflow: 'auto' }}>{s.content}</pre>
                   </div>
-                )}
-                {!isOpen && (
+                ) : (
                   <div style={{ borderTop: '1px solid var(--border)', background: 'var(--bg3)', padding: '8px 16px' }}>
                     <pre style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: 'var(--text3)', fontFamily: 'monospace', whiteSpace: 'pre-wrap', opacity: .7 }}>
                       {preview}{s.content.split('\n').length > 4 ? '\n...' : ''}
@@ -689,7 +1044,6 @@ function ScriptsTab() {
         </div>
       )}
 
-      {/* Script modal */}
       {showModal && (
         <ModalPortal onClose={() => setShowModal(false)}>
           <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 600, maxWidth: 'calc(100% - 32px)', margin: '32px auto' }}>
@@ -698,9 +1052,7 @@ function ScriptsTab() {
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer' }}>✕</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-              <div><Lbl>Título *</Lbl>
-                <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Nome do script" style={inp()} />
-              </div>
+              <div><Lbl>Título *</Lbl><input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Nome do script" style={inp()} /></div>
               <div><Lbl>Linguagem</Lbl>
                 <select value={form.language} onChange={e => setForm(p => ({ ...p, language: e.target.value }))} style={inp()}>
                   {SCRIPT_LANGS.map(l => <option key={l.id} value={l.id}>{l.label}</option>)}
@@ -708,28 +1060,16 @@ function ScriptsTab() {
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-              <div><Lbl>Categoria</Lbl>
-                <input value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))} placeholder="ex: AD, Exchange, Backup..." style={inp()} />
-              </div>
-              <div><Lbl>Tags</Lbl>
-                <input value={form.tags} onChange={e => setForm(p => ({ ...p, tags: e.target.value }))} placeholder="ex: usuario, senha, reset" style={inp()} />
-              </div>
+              <div><Lbl>Categoria</Lbl><input value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))} placeholder="ex: AD, Exchange, Backup..." style={inp()} /></div>
+              <div><Lbl>Tags</Lbl><input value={form.tags} onChange={e => setForm(p => ({ ...p, tags: e.target.value }))} placeholder="ex: usuario, senha, reset" style={inp()} /></div>
             </div>
-            <div style={{ marginBottom: 12 }}>
-              <Lbl>Descrição</Lbl>
-              <input value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="O que esse script faz..." style={inp()} />
-            </div>
-            <div style={{ marginBottom: 20 }}>
-              <Lbl>Código *</Lbl>
-              <textarea value={form.content} onChange={e => setForm(p => ({ ...p, content: e.target.value }))}
-                placeholder="Cole ou escreva o script aqui..." rows={10}
-                style={{ ...inp(), fontFamily: 'monospace', fontSize: 12, resize: 'vertical', lineHeight: 1.6 }} />
+            <div style={{ marginBottom: 12 }}><Lbl>Descrição</Lbl><input value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="O que esse script faz..." style={inp()} /></div>
+            <div style={{ marginBottom: 20 }}><Lbl>Código *</Lbl>
+              <textarea value={form.content} onChange={e => setForm(p => ({ ...p, content: e.target.value }))} placeholder="Cole ou escreva o script aqui..." rows={10} style={{ ...inp(), fontFamily: 'monospace', fontSize: 12, resize: 'vertical', lineHeight: 1.6 }} />
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => setShowModal(false)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
-              <button onClick={handleSave} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>
-                {editing ? 'Salvar' : 'Adicionar'}
-              </button>
+              <button onClick={handleSave} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>{editing ? 'Salvar' : 'Adicionar'}</button>
             </div>
           </div>
         </ModalPortal>
@@ -754,10 +1094,7 @@ function KBTab() {
 
   const fetch_ = async () => {
     setLoading(true)
-    try {
-      const r = await fetch('/api/trabalho/kb').then(r => r.json())
-      setItems(r.items ?? [])
-    } catch {}
+    try { const r = await fetch('/api/trabalho/kb').then(r => r.json()); setItems(r.items ?? []) } catch {}
     setLoading(false)
   }
   useEffect(() => { fetch_() }, [])
@@ -766,28 +1103,22 @@ function KBTab() {
     if (catFilter !== 'all' && i.category !== catFilter) return false
     if (search) {
       const q = search.toLowerCase()
-      if (!i.title.toLowerCase().includes(q) &&
-          !(i.client?.toLowerCase().includes(q)) &&
-          !(i.tags?.toLowerCase().includes(q)) &&
-          !i.content.toLowerCase().includes(q)) return false
+      if (!i.title.toLowerCase().includes(q) && !(i.client?.toLowerCase().includes(q)) && !(i.tags?.toLowerCase().includes(q)) && !i.content.toLowerCase().includes(q)) return false
     }
     return true
   }), [items, catFilter, search])
 
   const openAdd = () => { setEditing(null); setForm({ ...EMPTY_KB }); setShowModal(true) }
   const openEdit = (k: KBItem) => {
-    setEditing(k)
+    setEditing(k); setViewing(null)
     setForm({ title: k.title, client: k.client ?? '', category: k.category ?? '', content: k.content, tags: k.tags ?? '', drive_link: k.drive_link ?? '' })
-    setViewing(null); setShowModal(true)
+    setShowModal(true)
   }
   const handleSave = async () => {
     if (!form.title.trim() || !form.content.trim()) return
     const payload = { ...form, client: form.client || null, category: form.category || null, tags: form.tags || null, drive_link: form.drive_link || null }
-    if (editing) {
-      await fetch('/api/trabalho/kb', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editing.id, ...payload }) })
-    } else {
-      await fetch('/api/trabalho/kb', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-    }
+    if (editing) await fetch('/api/trabalho/kb', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editing.id, ...payload }) })
+    else await fetch('/api/trabalho/kb', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
     setShowModal(false); fetch_()
   }
   const handleDelete = async (id: string) => {
@@ -800,39 +1131,22 @@ function KBTab() {
     <div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: 3, background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, padding: 3 }}>
-          <button onClick={() => setCat('all')} style={{ padding: '5px 10px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 500, background: catFilter === 'all' ? 'var(--accent)' : 'transparent', color: catFilter === 'all' ? '#fff' : 'var(--text3)' }}>
-            Todos
-          </button>
-          {KB_CATS.map(c => (
-            <button key={c} onClick={() => setCat(c)}
-              style={{ padding: '5px 10px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 500, background: catFilter === c ? 'var(--accent)' : 'transparent', color: catFilter === c ? '#fff' : 'var(--text3)' }}>
-              {c}
-            </button>
-          ))}
+          <button onClick={() => setCat('all')} style={{ padding: '5px 10px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 500, background: catFilter === 'all' ? 'var(--accent)' : 'transparent', color: catFilter === 'all' ? '#fff' : 'var(--text3)' }}>Todos</button>
+          {KB_CATS.map(c => (<button key={c} onClick={() => setCat(c)} style={{ padding: '5px 10px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 500, background: catFilter === c ? 'var(--accent)' : 'transparent', color: catFilter === c ? '#fff' : 'var(--text3)' }}>{c}</button>))}
         </div>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar procedimentos..."
-          style={inp({ width: 200, padding: '6px 10px', fontSize: 12 })} />
-        <button onClick={openAdd}
-          style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
-          + Novo procedimento
-        </button>
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar procedimentos..." style={inp({ width: 200, padding: '6px 10px', fontSize: 12 })} />
+        <button onClick={openAdd} style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>+ Novo procedimento</button>
       </div>
 
       {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
-          {[0,1,2].map(i => <div key={i} className="skeleton" style={{ height: 140, borderRadius: 10 }} />)}
-        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>{[0,1,2].map(i => <div key={i} className="skeleton" style={{ height: 140, borderRadius: 10 }} />)}</div>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 50, color: 'var(--text3)', fontSize: 13 }}>
-          {items.length === 0 ? 'Nenhum procedimento ainda. Documente o que fez nos clientes para reutilizar depois.' : 'Nenhum procedimento encontrado.'}
-        </div>
+        <div style={{ textAlign: 'center', padding: 50, color: 'var(--text3)', fontSize: 13 }}>{items.length === 0 ? 'Nenhum procedimento ainda.' : 'Nenhum procedimento encontrado.'}</div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
           {filtered.map(k => (
-            <div key={k.id} onClick={() => setViewing(k)}
-              style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, padding: 16, cursor: 'pointer', transition: 'border-color .15s' }}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--accent)40')}
-              onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
+            <div key={k.id} onClick={() => setViewing(k)} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, padding: 16, cursor: 'pointer', transition: 'border-color .15s' }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--accent)40')} onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, flex: 1 }}>{k.title}</div>
                 <div style={{ display: 'flex', gap: 4, flexShrink: 0, marginLeft: 8 }}>
@@ -844,32 +1158,19 @@ function KBTab() {
                 {k.client && <span style={{ fontSize: 10, color: 'var(--text3)', background: 'var(--bg3)', padding: '2px 7px', borderRadius: 8 }}>{k.client}</span>}
                 {k.category && <span style={{ fontSize: 10, color: 'var(--accent)', background: 'var(--accent)15', padding: '2px 7px', borderRadius: 8 }}>{k.category}</span>}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text3)', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as any }}>
-                {k.content}
-              </div>
-              {k.tags && (
-                <div style={{ marginTop: 8, fontSize: 10, color: 'var(--text3)' }}>
-                  {k.tags.split(',').map(t => t.trim()).filter(Boolean).map(t => (
-                    <span key={t} style={{ background: 'var(--bg3)', padding: '1px 6px', borderRadius: 6, marginRight: 4 }}>#{t}</span>
-                  ))}
-                </div>
-              )}
-              <div style={{ marginTop: 8, fontSize: 10, color: 'var(--text3)' }}>
-                {new Date(k.updated_at).toLocaleDateString('pt-BR')}
-                {k.drive_link && <a href={k.drive_link} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ marginLeft: 8, color: 'var(--accent)' }}>📁 Drive</a>}
-              </div>
+              <div style={{ fontSize: 11, color: 'var(--text3)', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as any }}>{k.content}</div>
+              {k.tags && <div style={{ marginTop: 8, fontSize: 10, color: 'var(--text3)' }}>{k.tags.split(',').map(t => t.trim()).filter(Boolean).map(t => (<span key={t} style={{ background: 'var(--bg3)', padding: '1px 6px', borderRadius: 6, marginRight: 4 }}>#{t}</span>))}</div>}
+              <div style={{ marginTop: 8, fontSize: 10, color: 'var(--text3)' }}>{new Date(k.updated_at).toLocaleDateString('pt-BR')}{k.drive_link && <a href={k.drive_link} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ marginLeft: 8, color: 'var(--accent)' }}>📁 Drive</a>}</div>
             </div>
           ))}
         </div>
       )}
 
-      {/* View modal */}
       {viewing && (
         <ModalPortal onClose={() => setViewing(null)}>
           <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 640, maxWidth: 'calc(100% - 32px)', margin: '32px auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-              <div>
-                <div style={{ fontFamily: 'var(--font-d)', fontSize: 18, fontWeight: 700 }}>{viewing.title}</div>
+              <div><div style={{ fontFamily: 'var(--font-d)', fontSize: 18, fontWeight: 700 }}>{viewing.title}</div>
                 <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
                   {viewing.client && <span style={{ fontSize: 11, color: 'var(--text3)', background: 'var(--bg3)', padding: '2px 8px', borderRadius: 8 }}>{viewing.client}</span>}
                   {viewing.category && <span style={{ fontSize: 11, color: 'var(--accent)', background: 'var(--accent)15', padding: '2px 8px', borderRadius: 8 }}>{viewing.category}</span>}
@@ -884,18 +1185,11 @@ function KBTab() {
             <div style={{ background: 'var(--bg3)', borderRadius: 10, padding: 16, maxHeight: 500, overflow: 'auto' }}>
               <pre style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: 'var(--text)', whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>{viewing.content}</pre>
             </div>
-            {viewing.tags && (
-              <div style={{ marginTop: 12, fontSize: 11, color: 'var(--text3)' }}>
-                {viewing.tags.split(',').map(t => t.trim()).filter(Boolean).map(t => (
-                  <span key={t} style={{ background: 'var(--bg3)', padding: '2px 8px', borderRadius: 8, marginRight: 4 }}>#{t}</span>
-                ))}
-              </div>
-            )}
+            {viewing.tags && <div style={{ marginTop: 12, fontSize: 11, color: 'var(--text3)' }}>{viewing.tags.split(',').map(t => t.trim()).filter(Boolean).map(t => (<span key={t} style={{ background: 'var(--bg3)', padding: '2px 8px', borderRadius: 8, marginRight: 4 }}>#{t}</span>))}</div>}
           </div>
         </ModalPortal>
       )}
 
-      {/* Add/Edit modal */}
       {showModal && (
         <ModalPortal onClose={() => setShowModal(false)}>
           <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 580, maxWidth: 'calc(100% - 32px)', margin: '32px auto' }}>
@@ -903,37 +1197,23 @@ function KBTab() {
               <h2 style={{ fontFamily: 'var(--font-d)', fontSize: 18, fontWeight: 700 }}>{editing ? 'Editar procedimento' : 'Novo procedimento'}</h2>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer' }}>✕</button>
             </div>
-            <div style={{ marginBottom: 12 }}><Lbl>Título *</Lbl>
-              <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="ex: Reset de senha no AD" style={inp()} />
-            </div>
+            <div style={{ marginBottom: 12 }}><Lbl>Título *</Lbl><input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="ex: Reset de senha no AD" style={inp()} /></div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-              <div><Lbl>Cliente</Lbl>
-                <input value={form.client} onChange={e => setForm(p => ({ ...p, client: e.target.value }))} placeholder="Nome do cliente ou 'Geral'" style={inp()} />
-              </div>
+              <div><Lbl>Cliente</Lbl><input value={form.client} onChange={e => setForm(p => ({ ...p, client: e.target.value }))} placeholder="Nome do cliente ou 'Geral'" style={inp()} /></div>
               <div><Lbl>Categoria</Lbl>
                 <select value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))} style={inp()}>
-                  <option value="">–</option>
-                  {KB_CATS.map(c => <option key={c} value={c}>{c}</option>)}
+                  <option value="">–</option>{KB_CATS.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
             </div>
-            <div style={{ marginBottom: 12 }}><Lbl>Conteúdo / Procedimento *</Lbl>
-              <textarea value={form.content} onChange={e => setForm(p => ({ ...p, content: e.target.value }))}
-                placeholder="Descreva passo a passo o que foi feito..." rows={10} style={{ ...inp(), resize: 'vertical', lineHeight: 1.6 }} />
-            </div>
+            <div style={{ marginBottom: 12 }}><Lbl>Conteúdo *</Lbl><textarea value={form.content} onChange={e => setForm(p => ({ ...p, content: e.target.value }))} placeholder="Descreva passo a passo..." rows={10} style={{ ...inp(), resize: 'vertical', lineHeight: 1.6 }} /></div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
-              <div><Lbl>Tags</Lbl>
-                <input value={form.tags} onChange={e => setForm(p => ({ ...p, tags: e.target.value }))} placeholder="ex: AD, senha, usuario" style={inp()} />
-              </div>
-              <div><Lbl>Link Drive (evidências)</Lbl>
-                <input value={form.drive_link} onChange={e => setForm(p => ({ ...p, drive_link: e.target.value }))} placeholder="https://drive.google.com/..." style={inp()} />
-              </div>
+              <div><Lbl>Tags</Lbl><input value={form.tags} onChange={e => setForm(p => ({ ...p, tags: e.target.value }))} placeholder="ex: AD, senha, usuario" style={inp()} /></div>
+              <div><Lbl>Link Drive</Lbl><input value={form.drive_link} onChange={e => setForm(p => ({ ...p, drive_link: e.target.value }))} placeholder="https://drive.google.com/..." style={inp()} /></div>
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => setShowModal(false)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
-              <button onClick={handleSave} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>
-                {editing ? 'Salvar' : 'Adicionar'}
-              </button>
+              <button onClick={handleSave} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>{editing ? 'Salvar' : 'Adicionar'}</button>
             </div>
           </div>
         </ModalPortal>
@@ -959,45 +1239,29 @@ function TemplatesTab() {
 
   const fetch_ = async () => {
     setLoading(true)
-    try {
-      const r = await fetch('/api/trabalho/templates').then(r => r.json())
-      setItems(r.items ?? [])
-    } catch {}
+    try { const r = await fetch('/api/trabalho/templates').then(r => r.json()); setItems(r.items ?? []) } catch {}
     setLoading(false)
   }
   useEffect(() => { fetch_() }, [])
 
   const seedDefaults = async () => {
-    for (const t of DEFAULT_TEMPLATES) {
-      await fetch('/api/trabalho/templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(t) })
-    }
-    setSeeded(true)
-    fetch_()
+    for (const t of DEFAULT_TEMPLATES) await fetch('/api/trabalho/templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(t) })
+    setSeeded(true); fetch_()
   }
 
   const filtered = useMemo(() => items.filter(i => {
     if (catFilter !== 'all' && i.category !== catFilter) return false
-    if (search) {
-      const q = search.toLowerCase()
-      if (!i.title.toLowerCase().includes(q) && !i.content.toLowerCase().includes(q)) return false
-    }
+    if (search) { const q = search.toLowerCase(); if (!i.title.toLowerCase().includes(q) && !i.content.toLowerCase().includes(q)) return false }
     return true
   }), [items, catFilter, search])
 
   const openAdd = () => { setEditing(null); setForm({ title: '', content: '', category: '' }); setShowModal(true) }
-  const openEdit = (t: Template) => {
-    setEditing(t)
-    setForm({ title: t.title, content: t.content, category: t.category ?? '' })
-    setShowModal(true)
-  }
+  const openEdit = (t: Template) => { setEditing(t); setForm({ title: t.title, content: t.content, category: t.category ?? '' }); setShowModal(true) }
   const handleSave = async () => {
     if (!form.title.trim() || !form.content.trim()) return
     const payload = { ...form, category: form.category || null }
-    if (editing) {
-      await fetch('/api/trabalho/templates', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editing.id, ...payload }) })
-    } else {
-      await fetch('/api/trabalho/templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-    }
+    if (editing) await fetch('/api/trabalho/templates', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editing.id, ...payload }) })
+    else await fetch('/api/trabalho/templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
     setShowModal(false); fetch_()
   }
   const handleDelete = async (id: string) => {
@@ -1009,40 +1273,22 @@ function TemplatesTab() {
     <div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: 3, background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, padding: 3 }}>
-          <button onClick={() => setCat('all')} style={{ padding: '5px 10px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 500, background: catFilter === 'all' ? 'var(--accent)' : 'transparent', color: catFilter === 'all' ? '#fff' : 'var(--text3)' }}>
-            Todos
-          </button>
-          {TEMPLATE_CATS.map(c => (
-            <button key={c} onClick={() => setCat(c)}
-              style={{ padding: '5px 10px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 500, background: catFilter === c ? 'var(--accent)' : 'transparent', color: catFilter === c ? '#fff' : 'var(--text3)' }}>
-              {c}
-            </button>
-          ))}
+          <button onClick={() => setCat('all')} style={{ padding: '5px 10px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 500, background: catFilter === 'all' ? 'var(--accent)' : 'transparent', color: catFilter === 'all' ? '#fff' : 'var(--text3)' }}>Todos</button>
+          {TEMPLATE_CATS.map(c => (<button key={c} onClick={() => setCat(c)} style={{ padding: '5px 10px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 500, background: catFilter === c ? 'var(--accent)' : 'transparent', color: catFilter === c ? '#fff' : 'var(--text3)' }}>{c}</button>))}
         </div>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar templates..."
-          style={inp({ width: 180, padding: '6px 10px', fontSize: 12 })} />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar templates..." style={inp({ width: 180, padding: '6px 10px', fontSize: 12 })} />
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
           {items.length === 0 && !seeded && (
-            <button onClick={seedDefaults}
-              style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--accent)', background: 'var(--accent)15', color: 'var(--accent)', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
-              ✨ Carregar templates padrão
-            </button>
+            <button onClick={seedDefaults} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--accent)', background: 'var(--accent)15', color: 'var(--accent)', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>✨ Carregar templates padrão</button>
           )}
-          <button onClick={openAdd}
-            style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
-            + Novo template
-          </button>
+          <button onClick={openAdd} style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>+ Novo template</button>
         </div>
       </div>
 
       {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {[0,1,2].map(i => <div key={i} className="skeleton" style={{ height: 100, borderRadius: 10 }} />)}
-        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{[0,1,2].map(i => <div key={i} className="skeleton" style={{ height: 100, borderRadius: 10 }} />)}</div>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 50, color: 'var(--text3)', fontSize: 13 }}>
-          {items.length === 0 ? 'Nenhum template ainda. Crie templates de resposta para usar nos tickets.' : 'Nenhum template encontrado.'}
-        </div>
+        <div style={{ textAlign: 'center', padding: 50, color: 'var(--text3)', fontSize: 13 }}>{items.length === 0 ? 'Nenhum template ainda.' : 'Nenhum template encontrado.'}</div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
           {filtered.map(t => (
@@ -1057,9 +1303,7 @@ function TemplatesTab() {
                   <button onClick={() => handleDelete(t.id)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 11, opacity: .4 }}>✕</button>
                 </div>
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical' as any, flex: 1 }}>
-                {t.content}
-              </div>
+              <div style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical' as any, flex: 1 }}>{t.content}</div>
               <button onClick={() => copy(t.id, t.content)}
                 style={{ width: '100%', padding: '9px', borderRadius: 8, border: `1px solid ${copied === t.id ? '#6bcb77' : 'var(--border)'}`, background: copied === t.id ? '#6bcb7720' : 'var(--bg3)', color: copied === t.id ? '#6bcb77' : 'var(--text)', fontSize: 12, cursor: 'pointer', fontWeight: 600, transition: 'all .15s', marginTop: 'auto' }}>
                 {copied === t.id ? '✓ Copiado!' : '📋 Copiar template'}
@@ -1069,7 +1313,6 @@ function TemplatesTab() {
         </div>
       )}
 
-      {/* Modal */}
       {showModal && (
         <ModalPortal onClose={() => setShowModal(false)}>
           <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 520, maxWidth: 'calc(100% - 32px)', margin: '32px auto' }}>
@@ -1078,25 +1321,17 @@ function TemplatesTab() {
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer' }}>✕</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-              <div><Lbl>Título *</Lbl>
-                <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Nome do template" style={inp()} />
-              </div>
+              <div><Lbl>Título *</Lbl><input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Nome do template" style={inp()} /></div>
               <div><Lbl>Categoria</Lbl>
                 <select value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))} style={inp()}>
-                  <option value="">–</option>
-                  {TEMPLATE_CATS.map(c => <option key={c} value={c}>{c}</option>)}
+                  <option value="">–</option>{TEMPLATE_CATS.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
             </div>
-            <div style={{ marginBottom: 20 }}><Lbl>Conteúdo *</Lbl>
-              <textarea value={form.content} onChange={e => setForm(p => ({ ...p, content: e.target.value }))}
-                placeholder="Texto do template de resposta..." rows={10} style={{ ...inp(), resize: 'vertical', lineHeight: 1.6 }} />
-            </div>
+            <div style={{ marginBottom: 20 }}><Lbl>Conteúdo *</Lbl><textarea value={form.content} onChange={e => setForm(p => ({ ...p, content: e.target.value }))} placeholder="Texto do template..." rows={10} style={{ ...inp(), resize: 'vertical', lineHeight: 1.6 }} /></div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => setShowModal(false)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
-              <button onClick={handleSave} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>
-                {editing ? 'Salvar' : 'Adicionar'}
-              </button>
+              <button onClick={handleSave} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>{editing ? 'Salvar' : 'Adicionar'}</button>
             </div>
           </div>
         </ModalPortal>
@@ -1117,7 +1352,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 ]
 
 export default function TrabalhoPage() {
-  const [tab, setTab]         = useState<Tab>('tickets')
+  const [tab, setTab]           = useState<Tab>('tickets')
   const [driveUrl, setDriveUrl] = useState('')
   const [showDriveInput, setShowDriveInput] = useState(false)
 
@@ -1133,37 +1368,22 @@ export default function TrabalhoPage() {
 
   return (
     <div className="page-enter" style={{ padding: 28 }}>
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 26, fontWeight: 700, letterSpacing: -.5 }}>Trabalho</h1>
-          <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 4 }}>Movidesk · Scripts · Base de Conhecimento · Templates</div>
+          <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 4 }}>Tickets · Scripts · Base de Conhecimento · Templates</div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {showDriveInput ? (
             <div style={{ display: 'flex', gap: 6 }}>
-              <input defaultValue={driveUrl} id="drive-input" placeholder="URL da pasta do Drive"
-                style={{ ...inp({ width: 280, padding: '6px 10px', fontSize: 12 }) }} />
-              <button onClick={() => { const v = (document.getElementById('drive-input') as HTMLInputElement).value; saveDriveUrl(v) }}
-                style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, cursor: 'pointer' }}>
-                Salvar
-              </button>
-              <button onClick={() => setShowDriveInput(false)}
-                style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text3)', fontSize: 12, cursor: 'pointer' }}>
-                ✕
-              </button>
+              <input defaultValue={driveUrl} id="drive-input" placeholder="URL da pasta do Drive" style={{ ...inp({ width: 280, padding: '6px 10px', fontSize: 12 }) }} />
+              <button onClick={() => { const v = (document.getElementById('drive-input') as HTMLInputElement).value; saveDriveUrl(v) }} style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, cursor: 'pointer' }}>Salvar</button>
+              <button onClick={() => setShowDriveInput(false)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text3)', fontSize: 12, cursor: 'pointer' }}>✕</button>
             </div>
           ) : (
             <>
-              {driveUrl ? (
-                <a href={driveUrl} target="_blank" rel="noreferrer"
-                  style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg2)', color: 'var(--text)', fontSize: 12, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  📁 Abrir Drive
-                </a>
-              ) : null}
-              <button onClick={() => setShowDriveInput(true)}
-                style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg2)', color: 'var(--text3)', fontSize: 12, cursor: 'pointer' }}
-                title={driveUrl ? 'Alterar URL do Drive' : 'Configurar pasta do Drive'}>
+              {driveUrl && <a href={driveUrl} target="_blank" rel="noreferrer" style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg2)', color: 'var(--text)', fontSize: 12, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>📁 Abrir Drive</a>}
+              <button onClick={() => setShowDriveInput(true)} style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg2)', color: 'var(--text3)', fontSize: 12, cursor: 'pointer' }} title={driveUrl ? 'Alterar URL do Drive' : 'Configurar pasta do Drive'}>
                 {driveUrl ? '⚙️' : '📁 Configurar Drive'}
               </button>
             </>
@@ -1171,7 +1391,6 @@ export default function TrabalhoPage() {
         </div>
       </div>
 
-      {/* Tab bar */}
       <div style={{ display: 'flex', gap: 2, marginBottom: 24, borderBottom: '1px solid var(--border)' }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
@@ -1185,8 +1404,7 @@ export default function TrabalhoPage() {
         ))}
       </div>
 
-      {/* Tab content */}
-      {tab === 'tickets'   && <TicketsTab />}
+      {tab === 'tickets'   && <TicketsTab driveUrl={driveUrl} />}
       {tab === 'scripts'   && <ScriptsTab />}
       {tab === 'kb'        && <KBTab />}
       {tab === 'templates' && <TemplatesTab />}
