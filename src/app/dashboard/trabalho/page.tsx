@@ -645,6 +645,12 @@ function TicketsTab({ driveUrl }: { driveUrl: string }) {
             </div>
           )}
 
+          {parseError && csvParsed.length > 0 && (
+            <div style={{ marginTop: 12, fontSize: 12, color: '#ff6b6b', background: '#ff6b6b12', border: '1px solid #ff6b6b30', borderRadius: 8, padding: '8px 12px' }}>
+              ⚠️ {parseError}
+            </div>
+          )}
+
           {importResult && !importResult.error && (
             <div style={{ marginTop: 14, background: '#6bcb7715', border: '1px solid #6bcb7730', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#6bcb77' }}>
               ✅ {importResult.inserted ?? 0} ticket{(importResult.inserted ?? 0) !== 1 ? 's' : ''} importado{(importResult.inserted ?? 0) !== 1 ? 's' : ''}
