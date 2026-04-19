@@ -1206,12 +1206,14 @@ export default function TrabalhoPage() {
       </div>
 
       {/* Tab bar */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 12, padding: 4 }}>
+      <div style={{ display: 'flex', gap: 2, marginBottom: 24, borderBottom: '1px solid var(--border)' }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            style={{ flex: 1, padding: '8px 12px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, transition: 'background .15s',
-              background: tab === t.id ? 'var(--accent)' : 'transparent',
-              color: tab === t.id ? '#fff' : 'var(--text3)' }}>
+            style={{ padding: '10px 20px', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+              background: 'transparent', transition: 'color .15s',
+              color: tab === t.id ? 'var(--accent)' : 'var(--text3)',
+              borderBottom: tab === t.id ? '2px solid var(--accent)' : '2px solid transparent',
+              marginBottom: -1 }}>
             {t.icon} {t.label}
           </button>
         ))}
