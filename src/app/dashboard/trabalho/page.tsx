@@ -682,13 +682,11 @@ function TicketsTab({ driveUrl }: { driveUrl: string }) {
   return (
     <div>
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
         {[
-          { label: 'Ativos',          val: stats.active,        color: '#4d96ff' },
-          { label: 'Crítico/Alto',    val: stats.critical,      color: '#ff6b6b' },
-          { label: 'Venc. +5 dias',   val: stats.overdue,       color: stats.overdue > 0 ? '#ff9500' : '#6bcb77' },
-          { label: 'Ag. cliente',     val: stats.waiting,       color: '#ffd93d' },
-          { label: 'Resolvidos hoje', val: stats.resolvedToday, color: '#6bcb77' },
+          { label: 'Ativos',        val: stats.active,   color: '#4d96ff' },
+          { label: 'Crítico/Alto',  val: stats.critical, color: '#ff6b6b' },
+          { label: 'Venc. +5 dias', val: stats.overdue,  color: stats.overdue > 0 ? '#ff9500' : '#6bcb77' },
         ].map(s => (
           <div key={s.label} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px' }}>
             <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: .5, marginBottom: 4 }}>{s.label}</div>
