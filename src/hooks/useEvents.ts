@@ -3,12 +3,14 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import type { Event } from '@/types/database'
+import { createClient } from '@/lib/supabase/client'
 
 export function useEvents(month?: string) {
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [lastSync, setLastSync] = useState<Date | null>(null)
+  const supabase = createClient()
 
   const currentMonth = month || new Date().toISOString().slice(0, 7)
 
@@ -23,7 +25,17 @@ export function useEvents(month?: string) {
 
   useEffect(() => {
     fetchEvents()
-  }, [fetchEvents])
+
+    // Realtime: qualquer mudança na tabela events dispara um refetch
+    const channel = supabase
+      .channel(`events_changes_${currentMonth}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => {
+        fetchEvents()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [fetchEvents, currentMonth, supabase])
 
   const syncWithGoogle = async () => {
     setSyncing(true)
@@ -35,8 +47,11 @@ export function useEvents(month?: string) {
         await fetchEvents()
         return { success: true, synced: data.synced }
       }
+      // Mesmo sem sucesso no GCal, recarregar eventos locais
+      await fetchEvents()
       return { success: false, error: data.error, code: data.code }
     } catch (e) {
+      await fetchEvents()
       return { success: false, error: String(e) }
     } finally {
       setSyncing(false)
