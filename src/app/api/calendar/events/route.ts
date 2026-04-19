@@ -21,6 +21,11 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'invalid month format' }, { status: 400 })
   }
 
+  // Calcular o último dia real do mês (abril=30, fev=28/29, etc.)
+  const [year, mon] = month.split('-').map(Number)
+  const lastDayNum = new Date(year, mon, 0).getDate() // day 0 of next month = last day of this month
+  const lastDay = `${month}-${String(lastDayNum).padStart(2, '0')}`
+
   const admin = createAdminClient()
 
   const { data, error } = await admin
@@ -28,12 +33,13 @@ export async function GET(req: Request) {
     .select('*')
     .eq('user_id', user.id)
     .gte('event_date', `${month}-01`)
-    .lte('event_date', `${month}-31`)
+    .lte('event_date', lastDay)
     .order('event_date', { ascending: true })
     .order('start_time', { ascending: true })
 
-  if (error) return NextResponse.json({ error: 'Failed to fetch events' }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Failed to fetch events', detail: error.message }, { status: 500 })
   return NextResponse.json({ events: data })
+
 }
 
 export async function POST(req: Request) {
