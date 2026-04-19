@@ -9,7 +9,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const allowed = ['title', 'description', 'event_date', 'start_time', 'end_time', 'category', 'recurrence', 'google_event_id']
+  const allowed = ['title', 'description', 'event_date', 'start_time', 'end_time', 'category', 'recurrence', 'google_event_id', 'color']
   const updates: Record<string, unknown> = {}
   for (const k of allowed) if (k in body) updates[k] = body[k]
   if (Object.keys(updates).length === 0)
