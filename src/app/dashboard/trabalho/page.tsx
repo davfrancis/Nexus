@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import ModalPortal from '@/components/ModalPortal'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -363,9 +364,8 @@ function TicketsTab({ driveUrl }: { driveUrl: string }) {
 
       {/* Ticket modal */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 1000, overflowY: 'auto', padding: '32px 16px' }}
-          onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}>
-          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 600, maxWidth: '100%', margin: '0 auto' }}>
+        <ModalPortal onClose={() => setShowModal(false)}>
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 600, maxWidth: 'calc(100% - 32px)', margin: '32px auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontFamily: 'var(--font-d)', fontSize: 18, fontWeight: 700 }}>{editing ? 'Editar ticket' : 'Novo ticket'}</h2>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer' }}>✕</button>
@@ -480,14 +480,13 @@ function TicketsTab({ driveUrl }: { driveUrl: string }) {
               </button>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
 
       {/* Template picker */}
       {templatePicker && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={e => { if (e.target === e.currentTarget) setTemplatePicker(false) }}>
-          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 12, padding: 24, width: 480, maxHeight: '70vh', overflow: 'auto' }}>
+        <ModalPortal onClose={() => setTemplatePicker(false)}>
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 12, padding: 24, width: 480, maxWidth: 'calc(100% - 32px)', margin: '100px auto', maxHeight: 'calc(100vh - 200px)', overflow: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
               <div style={{ fontWeight: 700, fontSize: 15 }}>Selecionar template</div>
               <button onClick={() => setTemplatePicker(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 18 }}>✕</button>
@@ -511,14 +510,13 @@ function TicketsTab({ driveUrl }: { driveUrl: string }) {
               </div>
             )}
           </div>
-        </div>
+        </ModalPortal>
       )}
 
       {/* Overdue report modal */}
       {showReport && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 1000, overflowY: 'auto', padding: '32px 16px' }}
-          onClick={e => { if (e.target === e.currentTarget) setShowReport(false) }}>
-          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 600, maxWidth: '100%', margin: '0 auto' }}>
+        <ModalPortal onClose={() => setShowReport(false)}>
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 600, maxWidth: 'calc(100% - 32px)', margin: '32px auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div>
                 <div style={{ fontFamily: 'var(--font-d)', fontSize: 17, fontWeight: 700 }}>⚠️ Relatório de tickets em atraso</div>
@@ -572,7 +570,7 @@ function TicketsTab({ driveUrl }: { driveUrl: string }) {
               <pre style={{ fontSize: 11, color: 'var(--text3)', lineHeight: 1.5, whiteSpace: 'pre-wrap', margin: 0, maxHeight: 180, overflow: 'auto' }}>{reportText}</pre>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </div>
   )
@@ -727,9 +725,8 @@ function ScriptsTab() {
 
       {/* Script modal */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 1000, overflowY: 'auto', padding: '32px 16px' }}
-          onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}>
-          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 600, maxWidth: '100%', margin: '0 auto' }}>
+        <ModalPortal onClose={() => setShowModal(false)}>
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 600, maxWidth: 'calc(100% - 32px)', margin: '32px auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontFamily: 'var(--font-d)', fontSize: 18, fontWeight: 700 }}>{editing ? 'Editar script' : 'Novo script'}</h2>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer' }}>✕</button>
@@ -769,7 +766,7 @@ function ScriptsTab() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </div>
   )
@@ -902,9 +899,8 @@ function KBTab() {
 
       {/* View modal */}
       {viewing && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 1000, overflowY: 'auto', padding: '32px 16px' }}
-          onClick={e => { if (e.target === e.currentTarget) setViewing(null) }}>
-          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 640, maxWidth: '100%', margin: '0 auto' }}>
+        <ModalPortal onClose={() => setViewing(null)}>
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 640, maxWidth: 'calc(100% - 32px)', margin: '32px auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div>
                 <div style={{ fontFamily: 'var(--font-d)', fontSize: 18, fontWeight: 700 }}>{viewing.title}</div>
@@ -930,14 +926,13 @@ function KBTab() {
               </div>
             )}
           </div>
-        </div>
+        </ModalPortal>
       )}
 
       {/* Add/Edit modal */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 1000, overflowY: 'auto', padding: '32px 16px' }}
-          onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}>
-          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 580, maxWidth: '100%', margin: '0 auto' }}>
+        <ModalPortal onClose={() => setShowModal(false)}>
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 580, maxWidth: 'calc(100% - 32px)', margin: '32px auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontFamily: 'var(--font-d)', fontSize: 18, fontWeight: 700 }}>{editing ? 'Editar procedimento' : 'Novo procedimento'}</h2>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer' }}>✕</button>
@@ -975,7 +970,7 @@ function KBTab() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </div>
   )
@@ -1110,9 +1105,8 @@ function TemplatesTab() {
 
       {/* Modal */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 1000, overflowY: 'auto', padding: '32px 16px' }}
-          onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}>
-          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 520, maxWidth: '100%', margin: '0 auto' }}>
+        <ModalPortal onClose={() => setShowModal(false)}>
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 520, maxWidth: 'calc(100% - 32px)', margin: '32px auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontFamily: 'var(--font-d)', fontSize: 18, fontWeight: 700 }}>{editing ? 'Editar template' : 'Novo template'}</h2>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer' }}>✕</button>
@@ -1139,7 +1133,7 @@ function TemplatesTab() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </div>
   )
