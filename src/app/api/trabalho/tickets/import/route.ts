@@ -24,7 +24,17 @@ export async function POST(req: NextRequest) {
 
   const toInsert = tickets
     .filter((t: any) => !t.ticket_ref || !existingRefs.has(String(t.ticket_ref)))
-    .map((t: any) => ({ ...t, user_id: user.id }))
+    .map((t: any) => ({
+      user_id:    user.id,
+      ticket_ref: t.ticket_ref ?? null,
+      title:      t.title,
+      client:     t.client ?? null,
+      category:   t.category ?? null,
+      notes:      t.notes ?? null,
+      status:     t.status ?? 'open',
+      priority:   t.priority ?? 'medium',
+      opened_at:  t.opened_at ?? new Date().toISOString().slice(0, 10),
+    }))
 
   const toUpdate = tickets
     .filter((t: any) => t.ticket_ref && existingRefs.has(String(t.ticket_ref)))

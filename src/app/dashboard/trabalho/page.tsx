@@ -398,9 +398,7 @@ function TicketsTab({ driveUrl }: { driveUrl: string }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tickets: csvParsed }),
       })
-      const text = await r.text()
-      window.alert(`Status: ${r.status}\nResposta: ${text.slice(0, 500)}`)
-      const d = JSON.parse(text)
+      const d = await r.json()
       if (d.error) {
         setParseError(`Erro ao importar: ${d.error}`)
       } else {
