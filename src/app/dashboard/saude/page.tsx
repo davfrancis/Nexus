@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useHealth } from '@/hooks/useHealth'
 import { FitnessGoals } from '@/components/FitnessGoals'
+import ModalPortal from '@/components/ModalPortal'
 import { NutritionHistory } from '@/components/NutritionHistory'
 import { format } from 'date-fns'
 
@@ -566,9 +567,8 @@ function ReceitasSection() {
 
       {/* Recipe Detail Modal */}
       {selected && (
-        <div onClick={e => { if (e.target === e.currentTarget) setSelected(null) }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.75)', zIndex: 9999, overflowY: 'auto', padding: '32px 16px' }}>
-          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 560, maxWidth: '100%', margin: '0 auto' }}>
+        <ModalPortal onClose={() => setSelected(null)}>
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 560, maxWidth: 'calc(100% - 32px)', margin: '32px auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
               <div>
                 <div style={{ fontSize: 32, marginBottom: 6 }}>{selected.emoji}</div>
@@ -640,7 +640,7 @@ function ReceitasSection() {
               </div>
             )}
           </div>
-        </div>
+        </ModalPortal>
       )}
     </div>
   )
