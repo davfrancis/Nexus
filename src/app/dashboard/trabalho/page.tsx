@@ -1399,14 +1399,13 @@ export default function TrabalhoPage() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 2, marginBottom: 24, borderBottom: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 24, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            style={{ padding: '10px 20px', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-              background: 'transparent', transition: 'color .15s',
-              color: tab === t.id ? 'var(--accent)' : 'var(--text3)',
-              borderBottom: tab === t.id ? '2px solid var(--accent)' : '2px solid transparent',
-              marginBottom: -1 }}>
+            style={{ padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+              transition: 'background .15s, color .15s',
+              background: tab === t.id ? 'rgba(124,111,212,.18)' : 'transparent',
+              color: tab === t.id ? 'var(--accent2)' : 'var(--text3)' }}>
             {t.icon} {t.label}
           </button>
         ))}
