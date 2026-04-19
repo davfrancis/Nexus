@@ -385,7 +385,7 @@ function TicketsTab({ driveUrl }: { driveUrl: string }) {
       setCsvParsed(tickets)
       setParseError(null)
     }
-    reader.readAsText(file, 'UTF-8')
+    reader.readAsText(file, 'windows-1252')
   }
 
   const handleImport = async () => {
