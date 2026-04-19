@@ -12,6 +12,7 @@ const NAV = [
   { href: '/dashboard/agenda',    icon: '📅',  label: 'Agenda'     },
   { href: '/dashboard/habitos',   icon: '🔥',  label: 'Hábitos'    },
   { divider: true },
+  { href: '/dashboard/trabalho',  icon: '🖥️',  label: 'Trabalho'   },
   { href: '/dashboard/academia',  icon: '💪',  label: 'Academia'   },
   { href: '/dashboard/projetos',  icon: '🚀',  label: 'Projetos'   },
   { href: '/dashboard/conhecimento', icon: '📖', label: 'Conhecimento' },
