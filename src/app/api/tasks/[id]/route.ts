@@ -62,33 +62,50 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   if (error) return NextResponse.json({ error: 'Failed to update task' }, { status: 500 })
 
-  // Sincronizar evento espelho no calendário (se existir)
+  // Buscar evento espelho existente
   const { data: linkedEvent } = await admin
     .from('events')
     .select('id')
     .eq('task_id', id)
-    .single()
+    .maybeSingle()
 
-  if (linkedEvent) {
+  // Se calendar_linked foi ativado e ainda não existe evento → CRIAR
+  if (updates.calendar_linked === true && !linkedEvent && data?.due_date) {
+    await admin.from('events').insert({
+      user_id: user.id,
+      title: `📋 ${data.title}`,
+      description: data.description || null,
+      event_date: data.due_date,
+      start_time: null,
+      end_time: null,
+      category: data.category || 'work',
+      recurrence: 'none',
+      source: 'local',
+      task_id: id,
+    })
+  }
+
+  // Se calendar_linked foi desativado e existe evento → REMOVER
+  if (updates.calendar_linked === false && linkedEvent) {
+    await admin.from('events').delete().eq('id', linkedEvent.id)
+  }
+
+  // Se evento já existe → ATUALIZAR campos alterados
+  if (linkedEvent && updates.calendar_linked !== false) {
     const eventUpdates: Record<string, unknown> = {}
 
-    // Atualizar título no evento
     if (updates.title) {
       eventUpdates.title = `📋 ${updates.title}`
     }
-    // Atualizar descrição
     if ('description' in updates) {
       eventUpdates.description = updates.description
     }
-    // Atualizar categoria
     if (updates.category) {
       eventUpdates.category = updates.category
     }
-    // Atualizar data
     if (updates.due_date !== undefined) {
       eventUpdates.event_date = updates.due_date || data?.due_date
     }
-    // Quando concluída, marcar cor do evento
     if (updates.status === 'done') {
       eventUpdates.color = 'done'
     } else if (updates.status === 'todo' || updates.status === 'doing') {
@@ -96,14 +113,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     if (Object.keys(eventUpdates).length > 0) {
-      await admin
-        .from('events')
-        .update(eventUpdates)
-        .eq('id', linkedEvent.id)
+      await admin.from('events').update(eventUpdates).eq('id', linkedEvent.id)
     }
   }
 
   return NextResponse.json({ task: data })
+
 }
 
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
