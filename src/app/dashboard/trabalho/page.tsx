@@ -5,16 +5,23 @@ import ModalPortal from '@/components/ModalPortal'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-type TicketStatus   = 'open' | 'in_progress' | 'waiting_client' | 'waiting_vendor' | 'resolved' | 'closed'
-type TicketPriority = 'low' | 'medium' | 'high' | 'critical'
-
-interface Ticket {
-  id: string; ticket_ref: string | null; title: string; client: string | null
-  category: string | null; priority: TicketPriority; status: TicketStatus
-  description: string | null; resolution: string | null; draft_response: string | null
-  notes: string | null; drive_link: string | null
-  opened_at: string; resolved_at: string | null; created_at: string; updated_at: string
+interface MovideskTicket {
+  id: number
+  subject: string
+  createdDate: string
+  lastUpdate: string
+  statusId: number
+  statusName: string
+  urgencyId: number
+  urgencyName: string
+  clientName: string
+  lastResponder: 'agent' | 'client' | 'none'
+  lastActionDate: string | null
+  lastActionPreview: string | null
+  daysOpen: number
+  url: string
 }
+
 interface KBItem {
   id: string; title: string; client: string | null; category: string | null
   content: string; tags: string | null; drive_link: string | null
@@ -31,23 +38,15 @@ interface Template {
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-const TICKET_STATUS: Record<TicketStatus, { label: string; color: string; bg: string }> = {
-  open:           { label: 'Aberto',         color: '#4d96ff',      bg: '#4d96ff20' },
-  in_progress:    { label: 'Em andamento',    color: 'var(--accent)', bg: 'var(--accent)20' },
-  waiting_client: { label: 'Ag. cliente',     color: '#ffd93d',      bg: '#ffd93d20' },
-  waiting_vendor: { label: 'Ag. fornecedor',  color: '#ff9500',      bg: '#ff950020' },
-  resolved:       { label: 'Resolvido',       color: '#6bcb77',      bg: '#6bcb7720' },
-  closed:         { label: 'Encerrado',       color: 'var(--text3)', bg: 'var(--bg3)' },
+const MV_STATUS: Record<number, { label: string; color: string; bg: string }> = {
+  1: { label: 'Novo',          color: '#4d96ff',       bg: '#4d96ff20' },
+  2: { label: 'Em andamento',  color: 'var(--accent)',  bg: 'var(--accent)20' },
+  3: { label: 'Pausado',       color: '#ff9500',        bg: '#ff950020' },
+  4: { label: 'Cancelado',     color: 'var(--text3)',   bg: 'var(--bg3)' },
+  5: { label: 'Resolvido',     color: '#6bcb77',        bg: '#6bcb7720' },
+  6: { label: 'Encerrado',     color: 'var(--text3)',   bg: 'var(--bg3)' },
 }
 
-const TICKET_PRIORITY: Record<TicketPriority, { label: string; color: string }> = {
-  low:      { label: 'Baixa',   color: 'var(--text3)' },
-  medium:   { label: 'Média',   color: '#4d96ff' },
-  high:     { label: 'Alta',    color: '#ffd93d' },
-  critical: { label: 'Crítico', color: '#ff6b6b' },
-}
-
-const TICKET_CATS = ['M365', 'Infraestrutura', 'DevOps', 'Scripts', 'Segurança', 'Redes', 'Outros']
 const KB_CATS     = ['M365', 'Infraestrutura', 'DevOps', 'Scripts', 'Segurança', 'Redes', 'Geral']
 
 const SCRIPT_LANGS = [
@@ -61,7 +60,7 @@ const SCRIPT_LANGS = [
 ]
 
 const DEFAULT_TEMPLATES = [
-  { title: 'Análise em andamento',       category: 'Abertura',     content: 'Olá,\n\nRecebemos seu chamado e estamos analisando a situação. Retornaremos em breve com mais informações.\n\nAtenciosamente,\nSuportede TI' },
+  { title: 'Análise em andamento',       category: 'Abertura',     content: 'Olá,\n\nRecebemos seu chamado e estamos analisando a situação. Retornaremos em breve com mais informações.\n\nAtenciosamente,\nSuporte de TI' },
   { title: 'Solicitação de informações', category: 'Andamento',    content: 'Olá,\n\nPara prosseguir com a análise, precisamos das seguintes informações:\n\n- [ ] \n- [ ] \n\nAguardamos seu retorno.\n\nAtenciosamente,\nSuporte de TI' },
   { title: 'Aguardando retorno',         category: 'Andamento',    content: 'Olá,\n\nEntramos em contato anteriormente porém ainda não recebemos as informações necessárias para prosseguir.\n\nPor favor, retorne assim que possível para que possamos dar continuidade ao seu atendimento.\n\nAtenciosamente,\nSuporte de TI' },
   { title: 'Solução implementada',       category: 'Encerramento', content: 'Olá,\n\nA solução foi implementada com sucesso. Segue abaixo um resumo do que foi realizado:\n\n[Descrever o que foi feito]\n\nPor favor, confirme se o problema foi resolvido para que possamos encerrar o chamado.\n\nAtenciosamente,\nSuporte de TI' },
@@ -71,17 +70,23 @@ const DEFAULT_TEMPLATES = [
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function daysOpen(openedAt: string): number {
-  return Math.floor((Date.now() - new Date(openedAt + 'T12:00:00').getTime()) / 86400000)
+function mvBorderColor(t: MovideskTicket): string {
+  if (t.lastResponder === 'client') return '#ff6b6b'
+  if (t.daysOpen >= 8) return '#ff6b6b'
+  if (t.daysOpen >= 5) return '#ff9500'
+  if (t.daysOpen >= 3) return '#ffd93d'
+  return 'var(--border)'
 }
 
-function agingBorderColor(days: number, status: TicketStatus): string {
-  if (status === 'resolved' || status === 'closed') return '#6bcb77'
-  if (status === 'waiting_client' || status === 'waiting_vendor') return '#ffd93d'
-  if (days >= 8) return '#ff6b6b'
-  if (days >= 5) return '#ff9500'
-  if (days >= 3) return '#ffd93d'
-  return 'var(--border)'
+function timeAgo(dateStr: string | null): string {
+  if (!dateStr) return ''
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 2) return 'agora'
+  if (mins < 60) return `${mins}min atrás`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h atrás`
+  return `${Math.floor(hrs / 24)}d atrás`
 }
 
 function inp(extra: React.CSSProperties = {}): React.CSSProperties {
@@ -103,257 +108,284 @@ function useCopy() {
   return { copied, copy }
 }
 
-// ─── Tickets Tab ────────────────────────────────────────────────────────────
+// ─── Tickets Tab (Movidesk) ──────────────────────────────────────────────────
 
-const EMPTY_TICKET = {
-  ticket_ref: '', title: '', client: '', category: '', priority: 'medium' as TicketPriority,
-  status: 'open' as TicketStatus, description: '', resolution: '', draft_response: '',
-  notes: '', drive_link: '', opened_at: new Date().toISOString().slice(0, 10), resolved_at: '',
-}
+type MvGroup = 'all' | 'needs_response' | 'overdue' | 'waiting'
 
-function TicketsTab({ driveUrl }: { driveUrl: string }) {
-  const [items, setItems]         = useState<Ticket[]>([])
-  const [loading, setLoading]     = useState(true)
-  const [statusFilter, setStatus] = useState<TicketStatus | 'all'>('all')
-  const [catFilter, setCat]       = useState('all')
-  const [priFilter, setPri]       = useState('all')
-  const [search, setSearch]       = useState('')
-  const [showModal, setShowModal] = useState(false)
-  const [editing, setEditing]     = useState<Ticket | null>(null)
-  const [form, setForm]           = useState({ ...EMPTY_TICKET })
-  const [showReport, setShowReport] = useState(false)
-  const [copiedReport, setCopiedReport] = useState(false)
-  const [templatePicker, setTemplatePicker] = useState(false)
-  const [templates, setTemplates] = useState<Template[]>([])
+function TicketsTab() {
+  const [token, setToken]               = useState('')
+  const [tokenInput, setTokenInput]     = useState('')
+  const [showTokenForm, setShowTokenForm] = useState(false)
+  const [tickets, setTickets]           = useState<MovideskTicket[]>([])
+  const [loading, setLoading]           = useState(false)
+  const [error, setError]               = useState<string | null>(null)
+  const [lastFetched, setLastFetched]   = useState<Date | null>(null)
+  const [group, setGroup]               = useState<MvGroup>('all')
+  const [search, setSearch]             = useState('')
+  const [selected, setSelected]         = useState<MovideskTicket | null>(null)
+  const [draft, setDraft]               = useState('')
+  const [templates, setTemplates]       = useState<Template[]>([])
+  const [showTplPicker, setShowTplPicker] = useState(false)
+  const [cobrarTicket, setCobrarTicket] = useState<MovideskTicket | null>(null)
+  const [cobrarText, setCobrarText]     = useState('')
+  const { copied, copy }                = useCopy()
 
-  const fetch_ = async () => {
-    setLoading(true)
+  useEffect(() => {
     try {
-      const [tr, tt] = await Promise.all([
-        fetch('/api/trabalho/tickets').then(r => r.json()),
-        fetch('/api/trabalho/templates').then(r => r.json()),
-      ])
-      setItems(tr.items ?? [])
-      setTemplates(tt.items ?? [])
+      const t = localStorage.getItem('nexus_movidesk_token') ?? ''
+      setToken(t)
+      setTokenInput(t)
     } catch {}
+    fetch('/api/trabalho/templates')
+      .then(r => r.json())
+      .then(d => setTemplates(d.items ?? []))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => { if (token) fetchTickets() }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fetchTickets = async () => {
+    if (!token) return
+    setLoading(true); setError(null)
+    try {
+      const r = await fetch('/api/trabalho/movidesk', {
+        headers: { 'x-movidesk-token': token },
+      })
+      const d = await r.json()
+      if (d.error) throw new Error(d.error)
+      setTickets(d.tickets ?? [])
+      setLastFetched(new Date())
+    } catch (e: any) { setError(e.message) }
     setLoading(false)
   }
-  useEffect(() => { fetch_() }, [])
 
-  const filtered = useMemo(() => items.filter(t => {
-    if (statusFilter !== 'all' && t.status !== statusFilter) return false
-    if (catFilter !== 'all' && t.category !== catFilter) return false
-    if (priFilter !== 'all' && t.priority !== priFilter) return false
-    if (search) {
-      const q = search.toLowerCase()
-      if (!t.title.toLowerCase().includes(q) &&
-          !(t.client?.toLowerCase().includes(q)) &&
-          !(t.ticket_ref?.toLowerCase().includes(q))) return false
-    }
-    return true
-  }), [items, statusFilter, catFilter, priFilter, search])
-
-  const stats = useMemo(() => {
-    const active = items.filter(t => t.status !== 'resolved' && t.status !== 'closed')
-    const overdue = active.filter(t => daysOpen(t.opened_at) >= 5)
-    const critical = active.filter(t => t.priority === 'critical' || t.priority === 'high')
-    const waiting  = items.filter(t => t.status === 'waiting_client')
-    const today = new Date().toISOString().slice(0, 10)
-    const resolvedToday = items.filter(t => t.resolved_at === today || (t.status === 'resolved' && t.updated_at?.startsWith(today)))
-    return { active: active.length, overdue: overdue.length, critical: critical.length, waiting: waiting.length, resolvedToday: resolvedToday.length }
-  }, [items])
-
-  const overdueItems = useMemo(() =>
-    items.filter(t => t.status !== 'resolved' && t.status !== 'closed' && daysOpen(t.opened_at) >= 5)
-      .sort((a, b) => daysOpen(b.opened_at) - daysOpen(a.opened_at)),
-    [items]
-  )
-
-  const reportText = useMemo(() => {
-    if (!overdueItems.length) return ''
-    const date = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-    const lines = [`RELATÓRIO DE TICKETS EM ATRASO — ${date}`, `${'='.repeat(50)}`, '']
-    overdueItems.forEach((t, i) => {
-      const days = daysOpen(t.opened_at)
-      lines.push(`${i + 1}. [${t.ticket_ref ?? 'SEM REF'}] ${t.title}`)
-      lines.push(`   Cliente:    ${t.client ?? '—'}`)
-      lines.push(`   Categoria:  ${t.category ?? '—'}`)
-      lines.push(`   Prioridade: ${TICKET_PRIORITY[t.priority].label}`)
-      lines.push(`   Status:     ${TICKET_STATUS[t.status].label}`)
-      lines.push(`   Em aberto:  ${days} dia${days !== 1 ? 's' : ''}`)
-      if (t.notes) lines.push(`   Notas:      ${t.notes}`)
-      lines.push('')
-    })
-    return lines.join('\n')
-  }, [overdueItems])
-
-  const openAdd = () => {
-    setEditing(null)
-    setForm({ ...EMPTY_TICKET, opened_at: new Date().toISOString().slice(0, 10) })
-    setShowModal(true)
-  }
-  const openEdit = (t: Ticket) => {
-    setEditing(t)
-    setForm({
-      ticket_ref: t.ticket_ref ?? '', title: t.title, client: t.client ?? '',
-      category: t.category ?? '', priority: t.priority, status: t.status,
-      description: t.description ?? '', resolution: t.resolution ?? '',
-      draft_response: t.draft_response ?? '', notes: t.notes ?? '',
-      drive_link: t.drive_link ?? '', opened_at: t.opened_at,
-      resolved_at: t.resolved_at ?? '',
-    })
-    setShowModal(true)
+  const saveToken = () => {
+    const t = tokenInput.trim()
+    try { localStorage.setItem('nexus_movidesk_token', t) } catch {}
+    setToken(t)
+    setShowTokenForm(false)
   }
 
-  const handleSave = async () => {
-    if (!form.title.trim()) return
-    const payload = {
-      ...form,
-      ticket_ref: form.ticket_ref || null, client: form.client || null,
-      category: form.category || null, description: form.description || null,
-      resolution: form.resolution || null, draft_response: form.draft_response || null,
-      notes: form.notes || null, drive_link: form.drive_link || null,
-      resolved_at: form.resolved_at || null,
-    }
-    if (editing) {
-      await fetch('/api/trabalho/tickets', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editing.id, ...payload }) })
-    } else {
-      await fetch('/api/trabalho/tickets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-    }
-    setShowModal(false)
-    fetch_()
+  const needsResp = useMemo(() => tickets.filter(t => t.lastResponder === 'client'), [tickets])
+  const overdue   = useMemo(() => tickets.filter(t => t.daysOpen >= 5 && ![3, 4, 5, 6].includes(t.statusId)), [tickets])
+  const waiting   = useMemo(() => tickets.filter(t => t.lastResponder === 'agent'), [tickets])
+
+  const filtered = useMemo(() => {
+    const base = group === 'needs_response' ? needsResp
+      : group === 'overdue' ? overdue
+      : group === 'waiting' ? waiting
+      : tickets
+    if (!search) return base
+    const q = search.toLowerCase()
+    return base.filter(t =>
+      t.subject.toLowerCase().includes(q) ||
+      t.clientName.toLowerCase().includes(q) ||
+      String(t.id).includes(q)
+    )
+  }, [tickets, group, search, needsResp, overdue, waiting])
+
+  const openCobrar = (t: MovideskTicket, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSelected(null)
+    setCobrarTicket(t)
+    setCobrarText(
+      `Olá, ${t.clientName},\n\nPassamos para dar um retorno sobre o chamado #${t.id} - ${t.subject}.\n\nGostaríamos de confirmar se ainda precisam de auxílio ou se o problema foi resolvido.\n\nPor favor, retorne assim que possível para darmos continuidade ao seu atendimento.\n\nAtenciosamente,\nSuporte de TI`
+    )
   }
 
-  const handleDelete = async (id: string) => {
-    await fetch(`/api/trabalho/tickets?id=${id}`, { method: 'DELETE' })
-    setItems(p => p.filter(t => t.id !== id))
+  // ── No token ──────────────────────────────────────────────────────────────
+  if (!token && !showTokenForm) {
+    return (
+      <div style={{ maxWidth: 380, margin: '60px auto', textAlign: 'center' }}>
+        <div style={{ fontSize: 40, marginBottom: 16 }}>🎫</div>
+        <div style={{ fontFamily: 'var(--font-d)', fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Conectar ao Movidesk</div>
+        <div style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 24, lineHeight: 1.6 }}>
+          Configure seu token de API para visualizar e gerenciar seus tickets do Movidesk diretamente aqui.
+        </div>
+        <button onClick={() => setShowTokenForm(true)}
+          style={{ padding: '10px 28px', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>
+          Configurar token
+        </button>
+      </div>
+    )
   }
 
-  const applyTemplate = (tpl: Template) => {
-    setForm(p => ({ ...p, draft_response: tpl.content }))
-    setTemplatePicker(false)
+  // ── Token form ────────────────────────────────────────────────────────────
+  if (showTokenForm) {
+    return (
+      <div style={{ maxWidth: 420, margin: '40px auto' }}>
+        <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 14, padding: 28 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div style={{ fontFamily: 'var(--font-d)', fontSize: 17, fontWeight: 700 }}>Token do Movidesk</div>
+            {token && (
+              <button onClick={() => setShowTokenForm(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 18 }}>✕</button>
+            )}
+          </div>
+          <Lbl>Token de API</Lbl>
+          <input
+            type="password"
+            value={tokenInput}
+            onChange={e => setTokenInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && saveToken()}
+            placeholder="Cole seu token do Movidesk aqui"
+            style={{ ...inp(), marginBottom: 8 }}
+          />
+          <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 20, lineHeight: 1.6 }}>
+            Movidesk → Configurações → Conta → Integração → Token de API Pessoal
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            {token && (
+              <button onClick={() => setShowTokenForm(false)}
+                style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}>
+                Cancelar
+              </button>
+            )}
+            <button onClick={saveToken}
+              style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>
+              Conectar
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
+  // ── Main view ─────────────────────────────────────────────────────────────
   return (
     <div>
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 18 }}>
         {[
-          { label: 'Ativos',         val: stats.active,       color: '#4d96ff' },
-          { label: 'Crítico/Alto',   val: stats.critical,     color: '#ff6b6b' },
-          { label: 'Venc. +5 dias',  val: stats.overdue,      color: stats.overdue > 0 ? '#ff9500' : '#6bcb77' },
-          { label: 'Ag. cliente',    val: stats.waiting,      color: '#ffd93d' },
-          { label: 'Resolvidos hoje',val: stats.resolvedToday, color: '#6bcb77' },
+          { label: 'Total abertos',   val: tickets.length,   color: 'var(--text)' },
+          { label: 'Resp. pendente',  val: needsResp.length, color: needsResp.length > 0 ? '#ff6b6b' : 'var(--text3)' },
+          { label: 'Em atraso (+5d)', val: overdue.length,   color: overdue.length > 0  ? '#ff9500' : 'var(--text3)' },
+          { label: 'Ag. cliente',     val: waiting.length,   color: '#ffd93d' },
+          { label: 'Atualizado',      val: lastFetched
+              ? lastFetched.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+              : '—',
+            color: 'var(--text3)', small: true },
         ].map(s => (
           <div key={s.label} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px' }}>
             <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: .5, marginBottom: 4 }}>{s.label}</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: s.color, fontFamily: 'var(--font-d)' }}>{s.val}</div>
+            <div style={{ fontSize: (s as any).small ? 17 : 22, fontWeight: 700, color: s.color, fontFamily: 'var(--font-d)' }}>{s.val}</div>
           </div>
         ))}
       </div>
 
-      {/* Overdue alert */}
-      {stats.overdue > 0 && (
-        <div style={{ background: '#ff950015', border: '1px solid #ff950040', borderRadius: 10, padding: '10px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 13, color: '#ff9500' }}>
-            ⚠️ <strong>{stats.overdue}</strong> ticket{stats.overdue > 1 ? 's' : ''} com mais de 5 dias sem resolução
+      {/* Alert: client responded */}
+      {needsResp.length > 0 && (
+        <div style={{ background: '#ff6b6b12', border: '1px solid #ff6b6b35', borderRadius: 10, padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 13, color: '#ff6b6b', flex: 1 }}>
+            🗣️ <strong>{needsResp.length}</strong> ticket{needsResp.length > 1 ? 's' : ''} com resposta do cliente aguardando sua atenção
           </span>
-          <button onClick={() => setShowReport(true)}
-            style={{ fontSize: 12, color: '#ff9500', background: '#ff950020', border: '1px solid #ff950040', borderRadius: 8, padding: '5px 12px', cursor: 'pointer', fontWeight: 600 }}>
-            Ver relatório
+          <button onClick={() => setGroup('needs_response')}
+            style={{ fontSize: 12, color: '#ff6b6b', background: '#ff6b6b20', border: '1px solid #ff6b6b40', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontWeight: 600, flexShrink: 0 }}>
+            Ver todos
           </button>
         </div>
       )}
 
-      {/* Filters */}
+      {/* Filters row */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-        <select value={statusFilter} onChange={e => setStatus(e.target.value as any)} style={inp({ width: 'auto', padding: '6px 10px', fontSize: 12, cursor: 'pointer' })}>
-          <option value="all">Todos os status</option>
-          {(Object.entries(TICKET_STATUS) as [TicketStatus, typeof TICKET_STATUS[TicketStatus]][]).map(([k, v]) =>
-            <option key={k} value={k}>{v.label}</option>
-          )}
-        </select>
-        <select value={catFilter} onChange={e => setCat(e.target.value)} style={inp({ width: 'auto', padding: '6px 10px', fontSize: 12, cursor: 'pointer' })}>
-          <option value="all">Todas as categorias</option>
-          {TICKET_CATS.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select value={priFilter} onChange={e => setPri(e.target.value)} style={inp({ width: 'auto', padding: '6px 10px', fontSize: 12, cursor: 'pointer' })}>
-          <option value="all">Todas as prioridades</option>
-          {(Object.entries(TICKET_PRIORITY) as [TicketPriority, typeof TICKET_PRIORITY[TicketPriority]][]).map(([k, v]) =>
-            <option key={k} value={k}>{v.label}</option>
-          )}
-        </select>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar ref, título, cliente..."
-          style={inp({ width: 200, padding: '6px 10px', fontSize: 12 })} />
-        <button onClick={openAdd}
-          style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
-          + Novo ticket
-        </button>
+        <div style={{ display: 'flex', gap: 3, background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, padding: 3 }}>
+          {([
+            { id: 'all'            as MvGroup, label: `Todos (${tickets.length})` },
+            { id: 'needs_response' as MvGroup, label: `Responder (${needsResp.length})`, alert: needsResp.length > 0 },
+            { id: 'overdue'        as MvGroup, label: `Atrasados (${overdue.length})`,   warn: overdue.length > 0 },
+            { id: 'waiting'        as MvGroup, label: `Ag. cliente (${waiting.length})` },
+          ]).map(g => (
+            <button key={g.id} onClick={() => setGroup(g.id)}
+              style={{
+                padding: '5px 10px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600,
+                background: group === g.id
+                  ? ((g as any).alert ? '#ff6b6b' : (g as any).warn ? '#ff9500' : 'var(--accent)')
+                  : 'transparent',
+                color: group === g.id ? '#fff'
+                  : (g as any).alert ? '#ff6b6b' : (g as any).warn ? '#ff9500' : 'var(--text3)',
+              }}>
+              {g.label}
+            </button>
+          ))}
+        </div>
+        <input
+          value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Buscar por título, cliente, nº..."
+          style={inp({ width: 220, padding: '6px 10px', fontSize: 12 })}
+        />
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+          <button onClick={fetchTickets} disabled={loading}
+            style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg2)', color: loading ? 'var(--text3)' : 'var(--text)', fontSize: 12, cursor: loading ? 'default' : 'pointer' }}>
+            {loading ? '↻ Carregando…' : '↻ Atualizar'}
+          </button>
+          <button onClick={() => setShowTokenForm(true)} title="Alterar token Movidesk"
+            style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg2)', color: 'var(--text3)', fontSize: 12, cursor: 'pointer' }}>
+            ⚙️
+          </button>
+        </div>
       </div>
+
+      {/* Error banner */}
+      {error && (
+        <div style={{ background: '#ff6b6b12', border: '1px solid #ff6b6b35', borderRadius: 10, padding: '12px 16px', marginBottom: 14, fontSize: 13, color: '#ff6b6b' }}>
+          ⚠️ Erro: {error}
+          <button onClick={fetchTickets}
+            style={{ marginLeft: 12, fontSize: 12, color: '#ff6b6b', background: '#ff6b6b20', border: 'none', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>
+            Tentar novamente
+          </button>
+        </div>
+      )}
 
       {/* Ticket list */}
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {[0,1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 70, borderRadius: 10 }} />)}
+          {[0, 1, 2, 3, 4].map(i => <div key={i} className="skeleton" style={{ height: 76, borderRadius: 10 }} />)}
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 50, color: 'var(--text3)', fontSize: 13 }}>
-          {items.length === 0 ? 'Nenhum ticket cadastrado. Clique em "+ Novo ticket" para começar.' : 'Nenhum ticket com os filtros selecionados.'}
+          {tickets.length === 0
+            ? 'Nenhum ticket aberto no Movidesk.'
+            : 'Nenhum ticket encontrado com os filtros selecionados.'}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {filtered.map(t => {
-            const days = daysOpen(t.opened_at)
-            const borderColor = agingBorderColor(days, t.status)
-            const sc = TICKET_STATUS[t.status]
-            const pc = TICKET_PRIORITY[t.priority]
-            const isActive = t.status !== 'resolved' && t.status !== 'closed'
+            const bc = mvBorderColor(t)
+            const st = MV_STATUS[t.statusId] ?? { label: t.statusName, color: 'var(--text3)', bg: 'var(--bg3)' }
+            const isClient = t.lastResponder === 'client'
             return (
-              <div key={t.id} onClick={() => openEdit(t)}
-                style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderLeft: `4px solid ${borderColor}`, borderRadius: 10, padding: '12px 16px', cursor: 'pointer', transition: 'background .1s' }}
+              <div key={t.id} onClick={() => { setSelected(t); setDraft('') }}
+                style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderLeft: `4px solid ${bc}`, borderRadius: 10, padding: '12px 16px', cursor: 'pointer', transition: 'background .1s' }}
                 onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg3)')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'var(--bg2)')}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  {/* Ref */}
-                  {t.ticket_ref && (
-                    <span style={{ fontSize: 11, color: 'var(--text3)', background: 'var(--bg3)', padding: '2px 7px', borderRadius: 6, fontFamily: 'monospace', flexShrink: 0 }}>
-                      #{t.ticket_ref}
-                    </span>
+                  <a href={t.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
+                    style={{ fontSize: 11, color: 'var(--accent)', background: 'var(--accent)15', padding: '2px 7px', borderRadius: 6, fontFamily: 'monospace', flexShrink: 0, textDecoration: 'none', fontWeight: 600 }}>
+                    #{t.id}
+                  </a>
+                  <span style={{ fontSize: 13, fontWeight: 600, flex: 1, minWidth: 120 }}>{t.subject}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text3)', flexShrink: 0 }}>{t.clientName}</span>
+                  <span style={{ fontSize: 10, background: st.bg, color: st.color, padding: '2px 8px', borderRadius: 8, fontWeight: 600, flexShrink: 0 }}>{st.label}</span>
+                  <span style={{ fontSize: 11, color: bc === 'var(--border)' ? 'var(--text3)' : bc, fontWeight: t.daysOpen >= 5 ? 700 : 400, flexShrink: 0 }}>
+                    {t.daysOpen}d
+                  </span>
+                  {isClient && (
+                    <button onClick={e => openCobrar(t, e)}
+                      style={{ fontSize: 10, color: '#ff6b6b', background: '#ff6b6b15', border: '1px solid #ff6b6b40', borderRadius: 6, padding: '3px 9px', cursor: 'pointer', fontWeight: 700, flexShrink: 0 }}>
+                      Cobrar
+                    </button>
                   )}
-                  {/* Title */}
-                  <span style={{ fontSize: 13, fontWeight: 600, flex: 1, minWidth: 120 }}>{t.title}</span>
-                  {/* Client */}
-                  {t.client && (
-                    <span style={{ fontSize: 11, color: 'var(--text3)', flexShrink: 0 }}>{t.client}</span>
-                  )}
-                  {/* Category */}
-                  {t.category && (
-                    <span style={{ fontSize: 10, color: 'var(--accent)', background: 'var(--accent)15', padding: '2px 7px', borderRadius: 8, flexShrink: 0 }}>{t.category}</span>
-                  )}
-                  {/* Priority */}
-                  <span style={{ fontSize: 11, color: pc.color, fontWeight: 700, flexShrink: 0 }}>{pc.label}</span>
-                  {/* Status */}
-                  <span style={{ fontSize: 11, background: sc.bg, color: sc.color, padding: '3px 8px', borderRadius: 8, fontWeight: 600, flexShrink: 0 }}>{sc.label}</span>
-                  {/* Days */}
-                  {isActive && (
-                    <span style={{ fontSize: 11, color: borderColor === 'var(--border)' ? 'var(--text3)' : borderColor, fontWeight: days >= 5 ? 700 : 400, flexShrink: 0 }}>
-                      {days}d
-                    </span>
-                  )}
-                  {/* Drive link */}
-                  {t.drive_link && (
-                    <a href={t.drive_link} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
-                      style={{ fontSize: 12, color: 'var(--text3)', flexShrink: 0 }} title="Evidências no Drive">
-                      📁
-                    </a>
-                  )}
-                  {/* Delete */}
-                  <button onClick={e => { e.stopPropagation(); handleDelete(t.id) }}
-                    style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 11, opacity: .5, flexShrink: 0, padding: '0 2px' }}>✕</button>
                 </div>
-                {t.notes && (
-                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 5, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-                    {t.notes}
+                {t.lastActionPreview && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                    <span style={{ fontSize: 10, color: isClient ? '#ff6b6b' : 'var(--text3)', fontWeight: 700, flexShrink: 0 }}>
+                      {isClient ? '🗣️ Cliente:' : '✓ Agente:'}
+                    </span>
+                    <span style={{ fontSize: 11, color: 'var(--text3)', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flex: 1 }}>
+                      {t.lastActionPreview}
+                    </span>
+                    <span style={{ fontSize: 10, color: 'var(--text3)', flexShrink: 0, opacity: .7 }}>
+                      {timeAgo(t.lastActionDate)}
+                    </span>
                   </div>
                 )}
               </div>
@@ -362,148 +394,115 @@ function TicketsTab({ driveUrl }: { driveUrl: string }) {
         </div>
       )}
 
-      {/* Ticket modal */}
-      {showModal && (
-        <ModalPortal onClose={() => setShowModal(false)}>
-          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 600, maxWidth: 'calc(100% - 32px)', margin: '32px auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontFamily: 'var(--font-d)', fontSize: 18, fontWeight: 700 }}>{editing ? 'Editar ticket' : 'Novo ticket'}</h2>
-              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer' }}>✕</button>
+      {/* ── Ticket detail modal ── */}
+      {selected && (
+        <ModalPortal onClose={() => setSelected(null)}>
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 620, maxWidth: 'calc(100% - 32px)', margin: '32px auto' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
+              <div style={{ flex: 1, marginRight: 16 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
+                  <a href={selected.url} target="_blank" rel="noreferrer"
+                    style={{ fontSize: 12, color: '#fff', background: 'var(--accent)', padding: '4px 12px', borderRadius: 8, fontWeight: 700, textDecoration: 'none', fontFamily: 'monospace' }}>
+                    #{selected.id} ↗
+                  </a>
+                  {(() => {
+                    const st = MV_STATUS[selected.statusId] ?? { label: selected.statusName, color: 'var(--text3)', bg: 'var(--bg3)' }
+                    return <span style={{ fontSize: 11, background: st.bg, color: st.color, padding: '3px 9px', borderRadius: 8, fontWeight: 600 }}>{st.label}</span>
+                  })()}
+                  <span style={{ fontSize: 11, color: selected.daysOpen >= 5 ? '#ff9500' : 'var(--text3)', fontWeight: selected.daysOpen >= 5 ? 700 : 400 }}>
+                    {selected.daysOpen}d aberto
+                  </span>
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.3, marginBottom: 8 }}>{selected.subject}</div>
+                <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text3)' }}>👤 {selected.clientName}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text3)' }}>⚡ {selected.urgencyName}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text3)' }}>📅 {new Date(selected.createdDate).toLocaleDateString('pt-BR')}</span>
+                </div>
+              </div>
+              <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer', flexShrink: 0 }}>✕</button>
             </div>
 
-            {/* Ref + Title */}
-            <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: 10, marginBottom: 12 }}>
-              <div><Lbl>Nº do ticket</Lbl>
-                <input value={form.ticket_ref} onChange={e => setForm(p => ({ ...p, ticket_ref: e.target.value }))} placeholder="ex: 12345" style={inp()} />
+            {/* Last action */}
+            {selected.lastActionPreview && (
+              <div style={{
+                background: selected.lastResponder === 'client' ? '#ff6b6b0e' : 'var(--bg3)',
+                border: `1px solid ${selected.lastResponder === 'client' ? '#ff6b6b30' : 'var(--border)'}`,
+                borderRadius: 10, padding: '10px 14px', marginBottom: 16,
+              }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: selected.lastResponder === 'client' ? '#ff6b6b' : 'var(--text3)', marginBottom: 4 }}>
+                  {selected.lastResponder === 'client' ? '🗣️ Última resposta: CLIENTE' : '✓ Última resposta: AGENTE'}
+                  {selected.lastActionDate && (
+                    <span style={{ fontWeight: 400, marginLeft: 8, opacity: .7 }}>{timeAgo(selected.lastActionDate)}</span>
+                  )}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.5 }}>{selected.lastActionPreview}</div>
               </div>
-              <div><Lbl>Título *</Lbl>
-                <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Resumo do problema" style={inp()} />
-              </div>
-            </div>
-
-            {/* Client + Category + Priority + Status */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 12 }}>
-              <div><Lbl>Cliente</Lbl>
-                <input value={form.client} onChange={e => setForm(p => ({ ...p, client: e.target.value }))} placeholder="Nome do cliente" style={inp()} />
-              </div>
-              <div><Lbl>Categoria</Lbl>
-                <select value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))} style={inp()}>
-                  <option value="">–</option>
-                  {TICKET_CATS.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div><Lbl>Prioridade</Lbl>
-                <select value={form.priority} onChange={e => setForm(p => ({ ...p, priority: e.target.value as TicketPriority }))} style={inp()}>
-                  <option value="low">Baixa</option>
-                  <option value="medium">Média</option>
-                  <option value="high">Alta</option>
-                  <option value="critical">Crítico</option>
-                </select>
-              </div>
-              <div><Lbl>Status</Lbl>
-                <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as TicketStatus }))} style={inp()}>
-                  <option value="open">Aberto</option>
-                  <option value="in_progress">Em andamento</option>
-                  <option value="waiting_client">Ag. cliente</option>
-                  <option value="waiting_vendor">Ag. fornecedor</option>
-                  <option value="resolved">Resolvido</option>
-                  <option value="closed">Encerrado</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Dates */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-              <div><Lbl>Data de abertura</Lbl>
-                <input type="date" value={form.opened_at} onChange={e => setForm(p => ({ ...p, opened_at: e.target.value }))} style={inp()} />
-              </div>
-              <div><Lbl>Data de resolução</Lbl>
-                <input type="date" value={form.resolved_at} onChange={e => setForm(p => ({ ...p, resolved_at: e.target.value }))} style={inp()} />
-              </div>
-            </div>
-
-            {/* Description */}
-            <div style={{ marginBottom: 12 }}>
-              <Lbl>Descrição do problema</Lbl>
-              <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-                placeholder="Descreva o problema relatado pelo cliente..." rows={3} style={{ ...inp(), resize: 'vertical', lineHeight: 1.5 }} />
-            </div>
-
-            {/* Resolution */}
-            <div style={{ marginBottom: 12 }}>
-              <Lbl>Resolução / Procedimento aplicado</Lbl>
-              <textarea value={form.resolution} onChange={e => setForm(p => ({ ...p, resolution: e.target.value }))}
-                placeholder="O que foi feito para resolver o problema..." rows={3} style={{ ...inp(), resize: 'vertical', lineHeight: 1.5 }} />
-            </div>
+            )}
 
             {/* Draft response */}
-            <div style={{ marginBottom: 12 }}>
+            <div style={{ marginBottom: 18 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <Lbl>Rascunho de resposta ao cliente</Lbl>
-                <button onClick={() => setTemplatePicker(true)}
+                <Lbl>Rascunho de resposta</Lbl>
+                <button onClick={() => setShowTplPicker(true)}
                   style={{ fontSize: 11, color: 'var(--accent)', background: 'var(--accent)15', border: 'none', borderRadius: 6, padding: '3px 9px', cursor: 'pointer', fontWeight: 600 }}>
                   Usar template
                 </button>
               </div>
-              <textarea value={form.draft_response} onChange={e => setForm(p => ({ ...p, draft_response: e.target.value }))}
-                placeholder="Rascunhe aqui sua resposta ao cliente..." rows={3} style={{ ...inp(), resize: 'vertical', lineHeight: 1.5 }} />
-              {form.draft_response && (
-                <button onClick={() => navigator.clipboard.writeText(form.draft_response)}
-                  style={{ marginTop: 6, fontSize: 11, color: '#6bcb77', background: '#6bcb7715', border: '1px solid #6bcb7730', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}>
-                  📋 Copiar resposta
+              <textarea value={draft} onChange={e => setDraft(e.target.value)}
+                placeholder="Escreva aqui sua resposta para o cliente..." rows={4}
+                style={{ ...inp(), resize: 'vertical', lineHeight: 1.5 }} />
+              {draft && (
+                <button onClick={() => copy('draft', draft)}
+                  style={{ marginTop: 6, fontSize: 11, color: copied === 'draft' ? '#6bcb77' : 'var(--text3)', background: copied === 'draft' ? '#6bcb7715' : 'var(--bg3)', border: `1px solid ${copied === 'draft' ? '#6bcb7730' : 'var(--border)'}`, borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}>
+                  {copied === 'draft' ? '✓ Copiado!' : '📋 Copiar resposta'}
                 </button>
               )}
             </div>
 
-            {/* Notes + Drive */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
-              <div><Lbl>Notas internas</Lbl>
-                <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
-                  rows={2} placeholder="Anotações, observações..." style={{ ...inp(), resize: 'none', lineHeight: 1.4 }} />
-              </div>
-              <div><Lbl>Link Drive (evidências)</Lbl>
-                <input value={form.drive_link} onChange={e => setForm(p => ({ ...p, drive_link: e.target.value }))}
-                  placeholder="https://drive.google.com/..." style={inp()} />
-                {form.drive_link && (
-                  <a href={form.drive_link} target="_blank" rel="noreferrer"
-                    style={{ fontSize: 11, color: 'var(--accent)', marginTop: 4, display: 'block' }}>
-                    📁 Abrir no Drive
-                  </a>
-                )}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowModal(false)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
-              <button onClick={handleSave} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>
-                {editing ? 'Salvar' : 'Criar ticket'}
+            {/* Footer */}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center' }}>
+              <button onClick={e => openCobrar(selected, e)}
+                style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #ff6b6b35', background: '#ff6b6b12', color: '#ff6b6b', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+                📢 Cobrar cliente
               </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <a href={selected.url} target="_blank" rel="noreferrer"
+                  style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--accent)35', background: 'var(--accent)15', color: 'var(--accent)', fontSize: 12, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  Abrir no Movidesk ↗
+                </a>
+                <button onClick={() => setSelected(null)}
+                  style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}>
+                  Fechar
+                </button>
+              </div>
             </div>
           </div>
         </ModalPortal>
       )}
 
       {/* Template picker */}
-      {templatePicker && (
-        <ModalPortal onClose={() => setTemplatePicker(false)}>
+      {showTplPicker && (
+        <ModalPortal onClose={() => setShowTplPicker(false)}>
           <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 12, padding: 24, width: 480, maxWidth: 'calc(100% - 32px)', margin: '100px auto', maxHeight: 'calc(100vh - 200px)', overflow: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
               <div style={{ fontWeight: 700, fontSize: 15 }}>Selecionar template</div>
-              <button onClick={() => setTemplatePicker(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 18 }}>✕</button>
+              <button onClick={() => setShowTplPicker(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 18 }}>✕</button>
             </div>
             {templates.length === 0 ? (
               <div style={{ color: 'var(--text3)', fontSize: 13, textAlign: 'center', padding: 20 }}>
-                Nenhum template ainda. Crie na aba Templates.
+                Nenhum template. Crie na aba Templates.
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {templates.map(t => (
-                  <button key={t.id} onClick={() => applyTemplate(t)}
+                {templates.map(tpl => (
+                  <button key={tpl.id} onClick={() => { setDraft(tpl.content); setShowTplPicker(false) }}
                     style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', cursor: 'pointer', textAlign: 'left' }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{t.title}</div>
-                    {t.category && <div style={{ fontSize: 11, color: 'var(--accent)', marginTop: 2 }}>{t.category}</div>}
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{tpl.title}</div>
+                    {tpl.category && <div style={{ fontSize: 11, color: 'var(--accent)', marginTop: 2 }}>{tpl.category}</div>}
                     <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-                      {t.content.split('\n')[0]}
+                      {tpl.content.split('\n')[0]}
                     </div>
                   </button>
                 ))}
@@ -513,61 +512,28 @@ function TicketsTab({ driveUrl }: { driveUrl: string }) {
         </ModalPortal>
       )}
 
-      {/* Overdue report modal */}
-      {showReport && (
-        <ModalPortal onClose={() => setShowReport(false)}>
-          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 600, maxWidth: 'calc(100% - 32px)', margin: '32px auto' }}>
+      {/* Cobrar modal */}
+      {cobrarTicket && (
+        <ModalPortal onClose={() => setCobrarTicket(null)}>
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 14, padding: 28, width: 500, maxWidth: 'calc(100% - 32px)', margin: '80px auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div>
-                <div style={{ fontFamily: 'var(--font-d)', fontSize: 17, fontWeight: 700 }}>⚠️ Relatório de tickets em atraso</div>
-                <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>{overdueItems.length} ticket{overdueItems.length > 1 ? 's' : ''} com mais de 5 dias</div>
+                <div style={{ fontFamily: 'var(--font-d)', fontSize: 16, fontWeight: 700 }}>📢 Cobrar cliente</div>
+                <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>#{cobrarTicket.id} — {cobrarTicket.clientName}</div>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => {
-                  navigator.clipboard.writeText(reportText)
-                  setCopiedReport(true)
-                  setTimeout(() => setCopiedReport(false), 2000)
-                }}
-                  style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: copiedReport ? '#6bcb77' : 'var(--accent)', color: '#fff', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
-                  {copiedReport ? '✓ Copiado!' : '📋 Copiar relatório'}
-                </button>
-                <button onClick={() => setShowReport(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 18 }}>✕</button>
-              </div>
+              <button onClick={() => setCobrarTicket(null)} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 18, cursor: 'pointer' }}>✕</button>
             </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {overdueItems.map(t => {
-                const days = daysOpen(t.opened_at)
-                const pc = TICKET_PRIORITY[t.priority]
-                const sc = TICKET_STATUS[t.status]
-                return (
-                  <div key={t.id} style={{ background: 'var(--bg3)', borderRadius: 10, padding: '12px 16px', borderLeft: `4px solid ${days >= 8 ? '#ff6b6b' : '#ff9500'}` }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 600 }}>
-                          {t.ticket_ref && <span style={{ fontFamily: 'monospace', color: 'var(--text3)', marginRight: 8 }}>#{t.ticket_ref}</span>}
-                          {t.title}
-                        </div>
-                        <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 3 }}>
-                          {t.client && <span style={{ marginRight: 10 }}>{t.client}</span>}
-                          {t.category && <span style={{ color: 'var(--accent)', marginRight: 10 }}>{t.category}</span>}
-                          <span style={{ color: pc.color, fontWeight: 600 }}>{pc.label}</span>
-                        </div>
-                        {t.notes && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, fontStyle: 'italic' }}>{t.notes}</div>}
-                      </div>
-                      <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
-                        <div style={{ fontSize: 18, fontWeight: 700, color: days >= 8 ? '#ff6b6b' : '#ff9500', fontFamily: 'var(--font-d)' }}>{days}d</div>
-                        <div style={{ fontSize: 10, color: sc.color }}>{sc.label}</div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            <div style={{ marginTop: 16, background: 'var(--bg3)', borderRadius: 8, padding: 12 }}>
-              <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5 }}>Prévia do relatório para copiar</div>
-              <pre style={{ fontSize: 11, color: 'var(--text3)', lineHeight: 1.5, whiteSpace: 'pre-wrap', margin: 0, maxHeight: 180, overflow: 'auto' }}>{reportText}</pre>
+            <textarea value={cobrarText} onChange={e => setCobrarText(e.target.value)} rows={10}
+              style={{ ...inp(), resize: 'vertical', lineHeight: 1.6, marginBottom: 16 }} />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setCobrarTicket(null)}
+                style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}>
+                Cancelar
+              </button>
+              <button onClick={() => { copy('cobrar', cobrarText); setTimeout(() => setCobrarTicket(null), 1300) }}
+                style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: copied === 'cobrar' ? '#6bcb77' : 'var(--accent)', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 600, transition: 'background .15s' }}>
+                {copied === 'cobrar' ? '✓ Copiado!' : '📋 Copiar e fechar'}
+              </button>
             </div>
           </div>
         </ModalPortal>
@@ -1144,10 +1110,10 @@ function TemplatesTab() {
 type Tab = 'tickets' | 'scripts' | 'kb' | 'templates'
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'tickets',   label: 'Tickets',           icon: '🎫' },
-  { id: 'scripts',   label: 'Scripts',            icon: '⚡' },
+  { id: 'tickets',   label: 'Tickets',             icon: '🎫' },
+  { id: 'scripts',   label: 'Scripts',              icon: '⚡' },
   { id: 'kb',        label: 'Base de Conhecimento', icon: '📖' },
-  { id: 'templates', label: 'Templates',          icon: '📝' },
+  { id: 'templates', label: 'Templates',            icon: '📝' },
 ]
 
 export default function TrabalhoPage() {
@@ -1171,7 +1137,7 @@ export default function TrabalhoPage() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 26, fontWeight: 700, letterSpacing: -.5 }}>Trabalho</h1>
-          <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 4 }}>Tickets · Scripts · Base de Conhecimento · Templates de resposta</div>
+          <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 4 }}>Movidesk · Scripts · Base de Conhecimento · Templates</div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {showDriveInput ? (
@@ -1220,7 +1186,7 @@ export default function TrabalhoPage() {
       </div>
 
       {/* Tab content */}
-      {tab === 'tickets'   && <TicketsTab driveUrl={driveUrl} />}
+      {tab === 'tickets'   && <TicketsTab />}
       {tab === 'scripts'   && <ScriptsTab />}
       {tab === 'kb'        && <KBTab />}
       {tab === 'templates' && <TemplatesTab />}
