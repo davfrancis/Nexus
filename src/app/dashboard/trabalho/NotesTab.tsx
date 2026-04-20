@@ -100,21 +100,46 @@ export default function NotesTab() {
       TaskItem.configure({ nested: true }),
     ],
     content: '',
-    onUpdate: ({ editor }) => {
+  })
+
+  useEffect(() => {
+    if (!editor) return
+
+    const handleUpdate = () => {
       const currentActive = activeRef.current
       if (!currentActive) return
       clearTimeout(saveRef.current)
       setSaving(true)
+      
+      const json = editor.getJSON()
+      
       saveRef.current = setTimeout(async () => {
-        await fetch(`/api/notes/${currentActive.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: editor.getJSON() }),
-        })
-        setSaving(false)
-      }, 1500)
-    },
-  })
+        try {
+          const res = await fetch(`/api/notes/${currentActive.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: json }),
+          })
+          if (!res.ok) {
+            console.error('Save failed:', await res.text())
+          } else {
+            // Atualiza o estado local para garantir que a cópia em memória também tem o novo conteúdo
+            setNotes(p => p.map(n => n.id === currentActive.id ? { ...n, content: json } : n))
+            setTemplates(p => p.map(n => n.id === currentActive.id ? { ...n, content: json } : n))
+          }
+        } catch (err) {
+          console.error(err)
+        } finally {
+          setSaving(false)
+        }
+      }, 1000) // Reduzi de 1.5s para 1s pra salvar mais rápido
+    }
+
+    editor.on('update', handleUpdate)
+    return () => {
+      editor.off('update', handleUpdate)
+    }
+  }, [editor])
 
   // ── Fetch notes ────────────────────────────────────────────────────────────
   const fetchNotes = useCallback(async () => {
