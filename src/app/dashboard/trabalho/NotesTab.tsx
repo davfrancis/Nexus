@@ -83,6 +83,7 @@ export default function NotesTab() {
   const [loading, setLoading]       = useState(true)
   const saveRef = useRef<ReturnType<typeof setTimeout>>()
   const processedTplRef = useRef(false)
+  const activeRef = useRef<Note | null>(null)
 
   // ── TipTap editor ──────────────────────────────────────────────────────────
   const editor = useEditor({
@@ -100,11 +101,12 @@ export default function NotesTab() {
     ],
     content: '',
     onUpdate: ({ editor }) => {
-      if (!active) return
+      const currentActive = activeRef.current
+      if (!currentActive) return
       clearTimeout(saveRef.current)
       setSaving(true)
       saveRef.current = setTimeout(async () => {
-        await fetch(`/api/notes/${active.id}`, {
+        await fetch(`/api/notes/${currentActive.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ content: editor.getJSON() }),
@@ -178,6 +180,7 @@ export default function NotesTab() {
   // ── Select note ────────────────────────────────────────────────────────────
   const selectNote = (note: Note) => {
     setActive(note)
+    activeRef.current = note
     setEditTitle(note.title)
     setTagInput(note.tags || '')
     editor?.commands.setContent(note.content || '')
@@ -190,7 +193,9 @@ export default function NotesTab() {
       body: JSON.stringify({ title: editTitle }),
     })
     setNotes(p => p.map(n => n.id === active.id ? { ...n, title: editTitle } : n))
+    setTemplates(p => p.map(n => n.id === active.id ? { ...n, title: editTitle } : n))
     setActive(p => p ? { ...p, title: editTitle } : p)
+    activeRef.current = activeRef.current ? { ...activeRef.current, title: editTitle } : null
   }
 
   const saveTags = async () => {
@@ -232,7 +237,12 @@ export default function NotesTab() {
     if (!confirm(`Excluir "${note.title}"?`)) return
     await fetch(`/api/notes/${note.id}`, { method: 'DELETE' })
     setNotes(p => p.filter(n => n.id !== note.id))
-    if (active?.id === note.id) { setActive(null); editor?.commands.setContent('') }
+    setTemplates(p => p.filter(n => n.id !== note.id))
+    if (active?.id === note.id) {
+      setActive(null)
+      activeRef.current = null
+      editor?.commands.setContent('')
+    }
   }
 
   const updateProp = async (key: string, val: any) => {
@@ -242,7 +252,9 @@ export default function NotesTab() {
       body: JSON.stringify({ [key]: val }),
     })
     setNotes(p => p.map(n => n.id === active.id ? { ...n, [key]: val } : n))
+    setTemplates(p => p.map(n => n.id === active.id ? { ...n, [key]: val } : n))
     setActive(p => p ? { ...p, [key]: val } : p)
+    activeRef.current = activeRef.current ? { ...activeRef.current, [key]: val } : null
   }
 
   const filtered = notes.filter(n => {
