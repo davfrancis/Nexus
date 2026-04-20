@@ -82,6 +82,7 @@ export default function NotesTab() {
   const [tagInput, setTagInput]     = useState('')
   const [loading, setLoading]       = useState(true)
   const saveRef = useRef<ReturnType<typeof setTimeout>>()
+  const processedTplRef = useRef(false)
 
   // ── TipTap editor ──────────────────────────────────────────────────────────
   const editor = useEditor({
@@ -129,39 +130,49 @@ export default function NotesTab() {
 
   // ── Apply daily/weekly templates on mount ─────────────────────────────────
   useEffect(() => {
-    if (!templates.length) return
-    const today = new Date().toISOString().split('T')[0]
-    const dow   = new Date().getDay() // 1 = Monday
+    if (!templates.length || processedTplRef.current) return
+    processedTplRef.current = true // Garante que só roda 1x por sessão para evitar loop infinito
 
-    templates.forEach(async tpl => {
-      const sched = tpl.template_schedule
-      if (sched === 'none') return
-      if (tpl.last_applied_at === today) return
-      if (sched === 'weekly' && dow !== 1) return
-      if (sched === 'monthly' && new Date().getDate() !== 1) return
+    const processTemplates = async () => {
+      const today = new Date().toISOString().split('T')[0]
+      const dow   = new Date().getDay() // 1 = Monday
+      let appliedAny = false
 
-      // Criar cópia a partir do template (estrutura do template, pronta para preencher)
-      const dateLabel = new Date().toLocaleDateString('pt-BR')
-      await fetch('/api/notes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: `${tpl.title} — ${dateLabel}`,
-          content: tpl.content,  // mesma estrutura do template
-          category: tpl.category,
-          tags: tpl.tags,
-          color: tpl.color,
-        }),
-      })
-      // Marcar template como aplicado hoje
-      await fetch(`/api/notes/${tpl.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ last_applied_at: today }),
-      })
-    })
+      for (const tpl of templates) {
+        const sched = tpl.template_schedule
+        if (!sched || sched === 'none') continue
+        if (tpl.last_applied_at === today) continue
+        if (sched === 'weekly' && dow !== 1) continue
+        if (sched === 'monthly' && new Date().getDate() !== 1) continue
 
-    fetchNotes()
+        appliedAny = true
+        // Criar cópia a partir do template
+        const dateLabel = new Date().toLocaleDateString('pt-BR')
+        await fetch('/api/notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: `${tpl.title} — ${dateLabel}`,
+            content: tpl.content,
+            category: tpl.category,
+            tags: tpl.tags,
+            color: tpl.color,
+          }),
+        })
+        // Marcar template como aplicado hoje
+        await fetch(`/api/notes/${tpl.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ last_applied_at: today }),
+        })
+      }
+
+      if (appliedAny) {
+        fetchNotes()
+      }
+    }
+
+    processTemplates()
   }, [templates, fetchNotes])
 
   // ── Select note ────────────────────────────────────────────────────────────
