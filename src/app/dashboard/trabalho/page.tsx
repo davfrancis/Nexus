@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import ModalPortal from '@/components/ModalPortal'
+import NotesTab from './NotesTab'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -1350,13 +1351,14 @@ function TemplatesTab() {
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
-type Tab = 'tickets' | 'scripts' | 'kb' | 'templates'
+type Tab = 'tickets' | 'scripts' | 'kb' | 'templates' | 'notes'
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'tickets',   label: 'Tickets',             icon: '🎫' },
   { id: 'scripts',   label: 'Scripts',              icon: '⚡' },
   { id: 'kb',        label: 'Base de Conhecimento', icon: '📖' },
   { id: 'templates', label: 'Templates',            icon: '📝' },
+  { id: 'notes',     label: 'Anotações',            icon: '📒' },
 ]
 
 export default function TrabalhoPage() {
@@ -1415,6 +1417,7 @@ export default function TrabalhoPage() {
       {tab === 'scripts'   && <ScriptsTab />}
       {tab === 'kb'        && <KBTab />}
       {tab === 'templates' && <TemplatesTab />}
+      {tab === 'notes'     && <NotesTab />}
     </div>
   )
 }

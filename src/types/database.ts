@@ -378,42 +378,7 @@ export type Database = {
         }
         Relationships: []
       }
-      notes: {
-        Row: {
-          id: string
-          user_id: string
-          title: string
-          content: string | null
-          tag: string
-          pinned: boolean
-          folder_id: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          title: string
-          content?: string | null
-          tag?: string
-          pinned?: boolean
-          folder_id?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          title?: string
-          content?: string | null
-          tag?: string
-          pinned?: boolean
-          folder_id?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
+
       health_logs: {
         Row: {
           id: string
@@ -498,6 +463,54 @@ export type Database = {
           completed?: boolean
           started_at?: string
           ended_at?: string | null
+        }
+        Relationships: []
+      }
+      notes: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          content: Json | null
+          category: string | null
+          tags: string | null
+          color: string | null
+          pinned: boolean
+          is_template: boolean
+          template_schedule: string | null
+          last_applied_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title?: string
+          content?: Json | null
+          category?: string | null
+          tags?: string | null
+          color?: string | null
+          pinned?: boolean
+          is_template?: boolean
+          template_schedule?: string | null
+          last_applied_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          content?: Json | null
+          category?: string | null
+          tags?: string | null
+          color?: string | null
+          pinned?: boolean
+          is_template?: boolean
+          template_schedule?: string | null
+          last_applied_at?: string | null
+          created_at?: string
+          updated_at?: string
         }
         Relationships: []
       }

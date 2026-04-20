@@ -18,7 +18,7 @@ export function useNotes() {
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
-  const addNote = async (fields: { title: string; content?: string; tag?: string; folder_id?: string | null }) => {
+  const addNote = async (fields: { title: string; content?: any; tags?: string; category?: string; color?: string; folder_id?: string | null }) => {
     const res = await fetch('/api/notes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -30,7 +30,7 @@ export function useNotes() {
     return json.note as Note
   }
 
-  const updateNote = async (id: string, updates: Partial<Pick<Note, 'title' | 'content' | 'tag' | 'pinned' | 'folder_id'>>) => {
+  const updateNote = async (id: string, updates: Partial<Pick<Note, 'title' | 'content' | 'tags' | 'pinned' | 'category' | 'color'>>) => {
     const res = await fetch(`/api/notes/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
