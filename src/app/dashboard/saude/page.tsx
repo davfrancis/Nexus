@@ -875,7 +875,7 @@ function ShoppingListSection() {
               {items.filter(i => i.category === cat).map(item => (
                 <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div onClick={() => toggleItem(item.id)}
-                    style={{ width: 18, height: 18, borderRadius: 6, border: \`2px solid \${item.checked ? 'var(--accent)' : 'var(--border)'}\`, background: item.checked ? 'var(--accent)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    style={{ width: 18, height: 18, borderRadius: 6, border: `2px solid ${item.checked ? 'var(--accent)' : 'var(--border)'}`, background: item.checked ? 'var(--accent)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     {item.checked && <span style={{ color: '#fff', fontSize: 12 }}>✓</span>}
                   </div>
                   <span style={{ fontSize: 13, flex: 1, textDecoration: item.checked ? 'line-through' : 'none', color: item.checked ? 'var(--text3)' : 'var(--text)', cursor: 'pointer' }} onClick={() => toggleItem(item.id)}>
