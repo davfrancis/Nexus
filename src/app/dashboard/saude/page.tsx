@@ -132,6 +132,30 @@ const FOODS: FoodItem[] = [
   { name: 'Cerveja (lata 350ml)',       kcal: 154, p: 1.1,  c: 12.6, f: 0.0,  unit: 'ml' },
   { name: 'Café sem açúcar',           kcal: 2,   p: 0.3,  c: 0.0,  f: 0.0,  unit: 'ml' },
   { name: 'Whey protein (scoop 30g)',  kcal: 109, p: 23.0, c: 3.0,  f: 1.5 },
+  // Novos Grãos e Cereais
+  { name: 'Quinoa cozida',              kcal: 120, p: 4.4,  c: 21.3, f: 1.9 },
+  { name: 'Cuscuz paulista',            kcal: 180, p: 3.5,  c: 30.0, f: 5.0 },
+  { name: 'Macarrão integral cozido',   kcal: 124, p: 5.3,  c: 26.5, f: 0.5 },
+  // Novas Proteínas
+  { name: 'Patinho moído grelhado',     kcal: 219, p: 35.9, c: 0.0,  f: 7.3 },
+  { name: 'Peito de peru defumado',     kcal: 104, p: 20.0, c: 2.0,  f: 1.8 },
+  { name: 'Isca de carne bovina (alcatra)', kcal: 208, p: 30.0, c: 0.0,  f: 9.6 },
+  // Novos Laticínios
+  { name: 'Queijo Minas frescal',       kcal: 243, p: 15.0, c: 3.0,  f: 19.0 },
+  { name: 'Ricota',                     kcal: 138, p: 11.4, c: 5.1,  f: 7.9 },
+  { name: 'Leite de amêndoas',          kcal: 15,  p: 0.4,  c: 0.1,  f: 1.2, unit: 'ml' },
+  // Novas Frutas
+  { name: 'Maçã verde',                 kcal: 52,  p: 0.3,  c: 13.8, f: 0.2 },
+  { name: 'Melão',                      kcal: 34,  p: 0.8,  c: 8.2,  f: 0.2 },
+  { name: 'Ameixa fresca',              kcal: 46,  p: 0.7,  c: 11.4, f: 0.3 },
+  { name: 'Pêssego',                    kcal: 39,  p: 0.9,  c: 9.5,  f: 0.3 },
+  { name: 'Mirtilo (Blueberry)',        kcal: 57,  p: 0.7,  c: 14.5, f: 0.3 },
+  // Novos Vegetais
+  { name: 'Couve-flor cozida',          kcal: 23,  p: 1.8,  c: 4.1,  f: 0.5 },
+  { name: 'Repolho',                    kcal: 25,  p: 1.3,  c: 5.8,  f: 0.1 },
+  { name: 'Berinjela cozida',           kcal: 35,  p: 0.8,  c: 8.7,  f: 0.2 },
+  { name: 'Rúcula',                     kcal: 25,  p: 2.6,  c: 3.7,  f: 0.7 },
+  { name: 'Pimentão',                   kcal: 20,  p: 0.9,  c: 4.6,  f: 0.2 },
 ]
 
 // ── Receitas Fit ────────────────────────────────────────────────────
@@ -488,6 +512,103 @@ const RECIPES: Recipe[] = [
     ],
     tip: 'Sopa é excelente para o jantar: hidratante, reconfortante e de baixa caloria relativa ao volume.',
   },
+  {
+    id: 'r17', name: 'Crepioca Fit de Queijo', meal: 'breakfast', time: 5, emoji: '🌮',
+    kcal: 210, protein: 12, carbs: 15, fat: 11,
+    tags: ['Sem glúten', 'Rápido', 'Prático'],
+    ingredients: [
+      { qty: '1', item: 'ovo inteiro' },
+      { qty: '1 col. sopa', item: 'goma de tapioca' },
+      { qty: '1 col. sopa', item: 'requeijão light ou cottage' },
+      { qty: '1 fatia', item: 'queijo mussarela' },
+      { qty: '1 pitada', item: 'sal e orégano' },
+    ],
+    steps: [
+      'Bata o ovo com a goma de tapioca, sal e requeijão até ficar homogêneo.',
+      'Despeje a mistura em uma frigideira antiaderente levemente untada e aquecida.',
+      'Deixe dourar de um lado, vire e coloque a fatia de queijo.',
+      'Dobre ao meio e espere o queijo derreter. Sirva quentinho.',
+    ],
+    tip: 'Adicione sementes de chia na massa para aumentar a quantidade de fibras.',
+  },
+  {
+    id: 'r18', name: 'Mingau de Aveia Proteico', meal: 'breakfast', time: 10, emoji: '🥣',
+    kcal: 310, protein: 22, carbs: 40, fat: 7,
+    tags: ['Comfort food', 'Saciante', 'Fibras'],
+    ingredients: [
+      { qty: '3 col. sopa', item: 'aveia em flocos' },
+      { qty: '200ml', item: 'leite desnatado ou de amêndoas' },
+      { qty: '1 scoop', item: 'whey protein (baunilha ou chocolate)' },
+      { qty: '1/2', item: 'banana picada' },
+      { qty: 'A gosto', item: 'canela em pó' },
+    ],
+    steps: [
+      'Em uma panela, misture a aveia e o leite.',
+      'Cozinhe em fogo baixo mexendo sempre até engrossar (cerca de 5 min).',
+      'Desligue o fogo e misture o whey protein rapidamente para não empelotar.',
+      'Sirva em um bowl, decore com a banana picada e polvilhe canela.',
+    ],
+    tip: 'Se não tiver whey, misture 2 claras de ovo durante o cozimento mexendo rápido, ou adicione iogurte grego no final.',
+  },
+  {
+    id: 'r19', name: 'Escondidinho Fit de Batata Doce', meal: 'lunch', time: 40, emoji: '🥧',
+    kcal: 420, protein: 35, carbs: 45, fat: 12,
+    tags: ['Assado', 'Completo', 'Marmita'],
+    ingredients: [
+      { qty: '150g', item: 'batata doce cozida e amassada' },
+      { qty: '150g', item: 'frango desfiado temperado' },
+      { qty: '2 col. sopa', item: 'leite (para o purê)' },
+      { qty: '1 col. sopa', item: 'requeijão light' },
+      { qty: '1 fatia', item: 'queijo mussarela' },
+    ],
+    steps: [
+      'Misture a batata doce amassada com o leite e requeijão para fazer o purê. Tempere com sal.',
+      'Em um refratário pequeno, coloque metade do purê no fundo.',
+      'Adicione a camada de frango desfiado.',
+      'Cubra com o restante do purê e coloque a fatia de queijo por cima.',
+      'Leve ao forno pré-aquecido ou airfryer por 10-15 min para gratinar.',
+    ],
+    tip: 'Ótima opção para congelar. Você pode fazer várias marmitas para a semana.',
+  },
+  {
+    id: 'r20', name: 'Sanduíche Natural de Atum', meal: 'snack', time: 5, emoji: '🥪',
+    kcal: 260, protein: 18, carbs: 24, fat: 10,
+    tags: ['Sem cozinhar', 'Rápido', 'Prático'],
+    ingredients: [
+      { qty: '2 fatias', item: 'pão de forma integral' },
+      { qty: '3 col. sopa', item: 'atum em água escorrido' },
+      { qty: '1 col. sopa', item: 'maionese light ou iogurte natural' },
+      { qty: '1 col. sopa', item: 'cenoura ralada' },
+      { qty: '2 folhas', item: 'alface' },
+    ],
+    steps: [
+      'Em um potinho, misture o atum, a maionese/iogurte e a cenoura ralada.',
+      'Tempere a pasta com um pouco de sal, pimenta e limão se desejar.',
+      'Espalhe a pasta em uma fatia de pão, adicione a alface e feche com a outra fatia.',
+      'Corte ao meio e sirva.',
+    ],
+    tip: 'Embrulhe no papel alumínio para levar como lanche para o trabalho.',
+  },
+  {
+    id: 'r21', name: 'Pizza com Massa de Rap10 (Wrap)', meal: 'dinner', time: 10, emoji: '🍕',
+    kcal: 290, protein: 20, carbs: 25, fat: 12,
+    tags: ['Rápido', 'Comfort food', 'Fácil'],
+    ingredients: [
+      { qty: '1 disco', item: 'massa de wrap integral (tipo Rap10)' },
+      { qty: '2 col. sopa', item: 'molho de tomate natural' },
+      { qty: '50g', item: 'queijo mussarela light ralado' },
+      { qty: '3 fatias', item: 'peito de peru ou tomate cereja' },
+      { qty: 'A gosto', item: 'orégano e manjericão' },
+    ],
+    steps: [
+      'Coloque o disco de massa em uma frigideira antiaderente para tostar levemente um lado.',
+      'Vire a massa, desligue o fogo um instante.',
+      'Espalhe o molho de tomate, o queijo e o peito de peru (ou tomate).',
+      'Ligue em fogo baixo, tampe a frigideira e aguarde 2-3 min até o queijo derreter.',
+      'Finalize com orégano e manjericão.',
+    ],
+    tip: 'A massa de wrap fica super crocante na frigideira, matando a vontade de pizza de forma rápida e leve.',
+  },
 ]
 
 function ReceitasSection({ onAddToNutrition }: { onAddToNutrition?: (r: Recipe) => Promise<void> }) {
@@ -669,6 +790,104 @@ function ReceitasSection({ onAddToNutrition }: { onAddToNutrition?: (r: Recipe) 
           </div>
         </ModalPortal>
       )}
+    </div>
+  )
+}
+
+// ── Lista de Compras ────────────────────────────────────────────────
+const DEFAULT_SHOPPING_LIST = [
+  { id: 'sl1', category: 'Proteínas', item: 'Ovos', checked: false },
+  { id: 'sl2', category: 'Proteínas', item: 'Peito de frango', checked: false },
+  { id: 'sl3', category: 'Proteínas', item: 'Patinho moído', checked: false },
+  { id: 'sl4', category: 'Proteínas', item: 'Atum ou Sardinha em lata', checked: false },
+  { id: 'sl5', category: 'Carboidratos', item: 'Aveia em flocos', checked: false },
+  { id: 'sl6', category: 'Carboidratos', item: 'Arroz (branco ou integral)', checked: false },
+  { id: 'sl7', category: 'Carboidratos', item: 'Batata (inglesa e doce)', checked: false },
+  { id: 'sl8', category: 'Carboidratos', item: 'Macarrão / Tapioca', checked: false },
+  { id: 'sl9', category: 'Hortifruti', item: 'Bananas', checked: false },
+  { id: 'sl10', category: 'Hortifruti', item: 'Limão, Cebola, Alho', checked: false },
+  { id: 'sl11', category: 'Hortifruti', item: 'Folhas (Alface, Rúcula)', checked: false },
+  { id: 'sl12', category: 'Hortifruti', item: 'Tomate', checked: false },
+  { id: 'sl13', category: 'Laticínios & Outros', item: 'Queijo (Mussarela / Minas)', checked: false },
+  { id: 'sl14', category: 'Laticínios & Outros', item: 'Leite', checked: false },
+  { id: 'sl15', category: 'Laticínios & Outros', item: 'Iogurte Natural', checked: false },
+  { id: 'sl16', category: 'Laticínios & Outros', item: 'Azeite de Oliva', checked: false },
+]
+
+function ShoppingListSection() {
+  const [items, setItems] = useState(DEFAULT_SHOPPING_LIST)
+  const [newItem, setNewItem] = useState('')
+  const [newCategory, setNewCategory] = useState('Outros')
+
+  useEffect(() => {
+    const saved = localStorage.getItem('nexus_health_shopping_list')
+    if (saved) setItems(JSON.parse(saved))
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem('nexus_health_shopping_list', JSON.stringify(items))
+  }, [items])
+
+  const toggleItem = (id: string) => setItems(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i))
+  const removeItem = (id: string) => setItems(prev => prev.filter(i => i.id !== id))
+  const resetList = () => setItems(prev => prev.map(i => ({ ...i, checked: false })))
+  
+  const handleAdd = () => {
+    if (!newItem.trim()) return
+    setItems(prev => [...prev, { id: 'sl_' + Date.now(), category: newCategory, item: newItem.trim(), checked: false }])
+    setNewItem('')
+  }
+
+  const categories = Array.from(new Set(items.map(i => i.category)))
+
+  return (
+    <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, gridColumn: '1 / -1' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600 }}>🛒 Lista de Compras Base</div>
+          <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>Ingredientes essenciais para facilitar o preparo das refeições</div>
+        </div>
+        <button onClick={resetList} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg3)', color: 'var(--text3)', fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>
+          Desmarcar Tudo
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+        <input value={newItem} onChange={e => setNewItem(e.target.value)} placeholder="Adicionar novo item..." 
+          style={{ flex: '1 1 150px', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }} 
+          onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+        <select value={newCategory} onChange={e => setNewCategory(e.target.value)}
+          style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }}>
+          {Array.from(new Set([...categories, 'Proteínas', 'Carboidratos', 'Hortifruti', 'Laticínios & Outros', 'Outros'])).map(c => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+        <button onClick={handleAdd} style={{ padding: '9px 16px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+          Adicionar
+        </button>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
+        {categories.map(cat => (
+          <div key={cat} style={{ background: 'var(--bg3)', borderRadius: 10, padding: 14, border: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: .5, marginBottom: 12 }}>{cat}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {items.filter(i => i.category === cat).map(item => (
+                <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div onClick={() => toggleItem(item.id)}
+                    style={{ width: 18, height: 18, borderRadius: 6, border: \`2px solid \${item.checked ? 'var(--accent)' : 'var(--border)'}\`, background: item.checked ? 'var(--accent)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {item.checked && <span style={{ color: '#fff', fontSize: 12 }}>✓</span>}
+                  </div>
+                  <span style={{ fontSize: 13, flex: 1, textDecoration: item.checked ? 'line-through' : 'none', color: item.checked ? 'var(--text3)' : 'var(--text)', cursor: 'pointer' }} onClick={() => toggleItem(item.id)}>
+                    {item.item}
+                  </span>
+                  <button onClick={() => removeItem(item.id)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 14, opacity: 0.5, padding: 0 }} title="Remover item">✕</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -1177,6 +1396,9 @@ export default function SaudePage() {
             setFoodLogs(prev => [...prev, json.log])
           }
         }} />
+
+        {/* Lista de Compras */}
+        <ShoppingListSection />
 
         {/* Histórico Nutricional */}
         <NutritionHistory
