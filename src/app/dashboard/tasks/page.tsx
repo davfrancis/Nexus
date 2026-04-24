@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTasks } from '@/hooks/useTasks'
+import { useTaskReminders } from '@/hooks/useTaskReminders'
 import type { Task } from '@/types/database'
 import ModalPortal from '@/components/ModalPortal'
 import { useRouter } from 'next/navigation'
@@ -18,9 +19,33 @@ const CAT_COLORS: Record<string, string> = {
 const PRIORITIES = ['high', 'medium', 'low'] as const
 const CATEGORIES = ['work', 'personal', 'gym', 'study', 'urgent'] as const
 
+const REMINDER_OPTIONS = [
+  { value: 'none',   label: 'Sem lembrete' },
+  { value: '15min',  label: '15 minutos antes' },
+  { value: '30min',  label: '30 minutos antes' },
+  { value: '1h',     label: '1 hora antes' },
+  { value: '2h',     label: '2 horas antes' },
+  { value: '6h',     label: '6 horas antes' },
+  { value: '12h',    label: '12 horas antes' },
+  { value: '1day',   label: '1 dia antes' },
+  { value: '2days',  label: '2 dias antes' },
+  { value: '3days',  label: '3 dias antes' },
+  { value: '1week',  label: '1 semana antes' },
+]
+
+const RECURRENCE_OPTIONS = [
+  { value: 'none',      label: 'Não repetir' },
+  { value: 'daily',     label: 'Diariamente' },
+  { value: 'weekly',    label: 'Semanalmente' },
+  { value: 'biweekly',  label: 'A cada 2 semanas' },
+  { value: 'monthly',   label: 'Mensalmente' },
+  { value: 'yearly',    label: 'Anualmente' },
+]
+
 const EMPTY_FORM = {
   title: '', description: '', category: 'work', priority: 'medium',
   status: 'todo', due_date: '', calendar_linked: false,
+  reminder_type: 'none', recurrence: 'none', recurrence_end: '',
 }
 
 export default function TasksPage() {
@@ -29,7 +54,21 @@ export default function TasksPage() {
   const [editing, setEditing] = useState<Task | null>(null)
   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM })
   const [filter, setFilter] = useState<string>('all')
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default')
   const router = useRouter()
+
+  const { requestPermission } = useTaskReminders(notifPermission === 'granted')
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setNotifPermission(Notification.permission)
+    }
+  }, [])
+
+  const handleEnableNotifications = async () => {
+    const result = await requestPermission()
+    setNotifPermission(result as NotificationPermission)
+  }
 
   const filtered = filter === 'all' ? tasks : tasks.filter(t => t.category === filter)
 
@@ -44,6 +83,9 @@ export default function TasksPage() {
       status: t.status,
       due_date: t.due_date || '',
       calendar_linked: t.calendar_linked ?? false,
+      reminder_type: t.reminder_type || 'none',
+      recurrence: t.recurrence || 'none',
+      recurrence_end: t.recurrence_end || '',
     })
     setShowModal(true)
   }
@@ -54,8 +96,9 @@ export default function TasksPage() {
       ...form,
       description: form.description || null,
       due_date: form.due_date || null,
-      // Se vincular sem data, desativa (data é obrigatória para criar evento)
       calendar_linked: form.calendar_linked && !!form.due_date,
+      reminder_type: form.due_date ? form.reminder_type : 'none',
+      recurrence_end: form.recurrence_end || null,
     }
     if (editing) {
       await updateTask(editing.id, payload as any)
@@ -71,11 +114,22 @@ export default function TasksPage() {
   })
 
   const goToCalendar = (dueDate: string) => {
-    // Navega para agenda — o calendário sempre abre no mês atual, então guardamos a data em sessionStorage
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('agenda_focus_date', dueDate)
     }
     router.push('/dashboard/agenda')
+  }
+
+  const reminderBadge = (t: Task) => {
+    if (!t.reminder_type || t.reminder_type === 'none') return null
+    const opt = REMINDER_OPTIONS.find(o => o.value === t.reminder_type)
+    return opt?.label.replace(' antes', '') ?? null
+  }
+
+  const recurrenceBadge = (t: Task) => {
+    if (!t.recurrence || t.recurrence === 'none') return null
+    const opt = RECURRENCE_OPTIONS.find(o => o.value === t.recurrence)
+    return opt?.label ?? null
   }
 
   return (
@@ -93,6 +147,18 @@ export default function TasksPage() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {/* Botão ativar notificações do browser */}
+          {notifPermission !== 'granted' && notifPermission !== 'denied' && (
+            <button onClick={handleEnableNotifications}
+              style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg3)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              🔔 Ativar alertas
+            </button>
+          )}
+          {notifPermission === 'granted' && (
+            <span style={{ fontSize: 11, color: 'var(--green)', padding: '5px 10px', borderRadius: 8, background: 'rgba(62,207,160,.1)', border: '1px solid rgba(62,207,160,.25)' }}>
+              🔔 Alertas ativos
+            </span>
+          )}
           <select value={filter} onChange={e => setFilter(e.target.value)}
             style={{ ...inp({ width: 'auto', padding: '7px 12px' }) }}>
             <option value="all">Todas</option>
@@ -139,7 +205,6 @@ export default function TasksPage() {
                       }}
                       onClick={() => openEdit(t)}
                     >
-                      {/* Badge calendário */}
                       {t.calendar_linked && (
                         <div style={{
                           position: 'absolute', top: 8, right: 34,
@@ -161,9 +226,18 @@ export default function TasksPage() {
                         <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 100, background: `${CAT_COLORS[t.category]}20`, color: CAT_COLORS[t.category], fontWeight: 600 }}>{t.category}</span>
                         <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 100, background: 'var(--bg4)', color: t.priority === 'high' ? 'var(--red)' : t.priority === 'medium' ? 'var(--amber)' : 'var(--green)' }}>{t.priority}</span>
                         {t.due_date && <span style={{ fontSize: 10, color: 'var(--text3)' }}>📅 {t.due_date}</span>}
+                        {reminderBadge(t) && (
+                          <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 100, background: 'rgba(240,160,60,.12)', color: 'var(--amber)', fontWeight: 500 }}>
+                            🔔 {reminderBadge(t)}
+                          </span>
+                        )}
+                        {recurrenceBadge(t) && (
+                          <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 100, background: 'rgba(74,158,232,.12)', color: '#4A9EE8', fontWeight: 500 }}>
+                            🔁 {recurrenceBadge(t)}
+                          </span>
+                        )}
                       </div>
 
-                      {/* Ações */}
                       <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                         {col.key !== 'done' && (
                           <button onClick={e => { e.stopPropagation(); moveTask(t.id) }}
@@ -194,7 +268,7 @@ export default function TasksPage() {
 
       {showModal && (
         <ModalPortal onClose={() => setShowModal(false)}>
-          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 12, padding: 28, width: 480, maxWidth: 'calc(100% - 32px)', margin: '40px auto' }}>
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 12, padding: 28, width: 520, maxWidth: 'calc(100% - 32px)', margin: '40px auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontFamily: 'var(--font-d)', fontSize: 18, fontWeight: 700 }}>{editing ? 'Editar Tarefa' : 'Nova Tarefa'}</h2>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer' }}>✕</button>
@@ -226,9 +300,60 @@ export default function TasksPage() {
               ))}
             </div>
 
-            <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 14 }}>
               <label style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-d)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, display: 'block' }}>Data limite</label>
               <input type="date" value={form.due_date} onChange={e => setForm(p => ({ ...p, due_date: e.target.value }))} style={inp()} />
+            </div>
+
+            {/* Lembrete */}
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-d)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, display: 'block' }}>
+                🔔 Lembrete
+              </label>
+              <select
+                value={form.reminder_type}
+                onChange={e => setForm(p => ({ ...p, reminder_type: e.target.value }))}
+                disabled={!form.due_date}
+                style={{ ...inp(), opacity: form.due_date ? 1 : 0.5 }}
+              >
+                {REMINDER_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              {!form.due_date && (
+                <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>
+                  Defina uma data limite para ativar lembretes
+                </div>
+              )}
+              {form.due_date && form.reminder_type !== 'none' && notifPermission !== 'granted' && (
+                <div style={{ fontSize: 11, color: 'var(--amber)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  ⚠️ Notificações do navegador não autorizadas.{' '}
+                  <button onClick={handleEnableNotifications}
+                    style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 11, padding: 0, textDecoration: 'underline' }}>
+                    Ativar agora
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Recorrência */}
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-d)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, display: 'block' }}>
+                🔁 Repetição
+              </label>
+              <select
+                value={form.recurrence}
+                onChange={e => setForm(p => ({ ...p, recurrence: e.target.value }))}
+                style={inp()}
+              >
+                {RECURRENCE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              {form.recurrence !== 'none' && (
+                <div style={{ marginTop: 8 }}>
+                  <label style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 4, display: 'block' }}>Repetir até (opcional)</label>
+                  <input type="date" value={form.recurrence_end}
+                    onChange={e => setForm(p => ({ ...p, recurrence_end: e.target.value }))}
+                    style={inp()} />
+                </div>
+              )}
             </div>
 
             {/* Toggle Vincular ao Calendário */}
@@ -242,7 +367,6 @@ export default function TasksPage() {
                 transition: 'all .2s',
               }}
             >
-              {/* Switch visual */}
               <div style={{
                 width: 36, height: 20, borderRadius: 10, flexShrink: 0,
                 background: form.calendar_linked ? 'var(--accent)' : 'var(--bg4)',

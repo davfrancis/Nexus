@@ -50,6 +50,10 @@ export type Database = {
           status: string
           due_date: string | null
           calendar_linked: boolean
+          reminder_type: string
+          reminder_sent: boolean
+          recurrence: string
+          recurrence_end: string | null
           created_at: string
           updated_at: string
         }
@@ -63,6 +67,10 @@ export type Database = {
           status?: string
           due_date?: string | null
           calendar_linked?: boolean
+          reminder_type?: string
+          reminder_sent?: boolean
+          recurrence?: string
+          recurrence_end?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -76,6 +84,10 @@ export type Database = {
           status?: string
           due_date?: string | null
           calendar_linked?: boolean
+          reminder_type?: string
+          reminder_sent?: boolean
+          recurrence?: string
+          recurrence_end?: string | null
           created_at?: string
           updated_at?: string
         }

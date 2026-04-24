@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
-  const { title, description, category, priority, status, due_date, calendar_linked } = body
+  const { title, description, category, priority, status, due_date, calendar_linked, reminder_type, recurrence, recurrence_end } = body
 
   if (!title || typeof title !== 'string' || title.trim().length === 0) {
     return NextResponse.json({ error: 'title is required' }, { status: 400 })
@@ -57,6 +57,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'invalid status' }, { status: 400 })
   }
 
+  const VALID_REMINDERS = ['none', '15min', '30min', '1h', '2h', '6h', '12h', '1day', '2days', '3days', '1week']
+  const VALID_RECURRENCES = ['none', 'daily', 'weekly', 'biweekly', 'monthly', 'yearly']
+  if (reminder_type && !VALID_REMINDERS.includes(reminder_type as string)) {
+    return NextResponse.json({ error: 'invalid reminder_type' }, { status: 400 })
+  }
+  if (recurrence && !VALID_RECURRENCES.includes(recurrence as string)) {
+    return NextResponse.json({ error: 'invalid recurrence' }, { status: 400 })
+  }
+
   const admin = createAdminClient()
   const shouldLink = calendar_linked === true && !!due_date
 
@@ -71,6 +80,10 @@ export async function POST(req: Request) {
       status: (status as string) || 'todo',
       due_date: (due_date as string | null) || null,
       calendar_linked: shouldLink,
+      reminder_type: (reminder_type as string) || 'none',
+      reminder_sent: false,
+      recurrence: (recurrence as string) || 'none',
+      recurrence_end: (recurrence_end as string | null) || null,
     })
     .select()
     .single()
