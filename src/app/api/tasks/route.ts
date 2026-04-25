@@ -84,13 +84,15 @@ export async function POST(req: Request) {
     recurrence_end: (recurrence_end as string | null) || null,
   }
 
-  // Campos das migrations 010/011 — adicionados condicionalmente para não quebrar
-  // caso as migrations ainda não tenham sido aplicadas no banco
-  if (start_date !== undefined)          insertPayload.start_date           = (start_date as string | null) || null
-  if (start_time !== undefined)          insertPayload.start_time           = (start_time as string | null) || null
-  if (due_time !== undefined)            insertPayload.due_time             = (due_time as string | null) || null
-  if (start_reminder_type !== undefined) insertPayload.start_reminder_type  = (start_reminder_type as string) || 'none'
-  if (start_reminder_type !== undefined) insertPayload.start_reminder_sent  = false
+  // Campos das migrations 010/011 — só incluídos se tiverem valor real,
+  // para não quebrar caso as migrations ainda não tenham sido aplicadas no banco
+  if (start_date && typeof start_date === 'string')           insertPayload.start_date           = start_date
+  if (start_time && typeof start_time === 'string')           insertPayload.start_time           = start_time
+  if (due_time   && typeof due_time   === 'string')           insertPayload.due_time             = due_time
+  if (start_reminder_type && (start_reminder_type as string) !== 'none') {
+    insertPayload.start_reminder_type = start_reminder_type
+    insertPayload.start_reminder_sent = false
+  }
 
   const { data, error } = await admin
     .from('tasks')

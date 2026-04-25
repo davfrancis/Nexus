@@ -100,23 +100,28 @@ export default function TasksPage() {
   const handleSave = async () => {
     if (!form.title.trim()) return
     const payload = {
-      ...form,
+      title: form.title.trim(),
       description: form.description || null,
+      category: form.category,
+      priority: form.priority,
+      status: form.status,
+      due_date: form.due_date || null,
+      due_time: form.due_time || null,
       start_date: form.start_date || null,
       start_time: form.start_time || null,
       start_reminder_type: form.start_date ? form.start_reminder_type : 'none',
-      due_date: form.due_date || null,
-      due_time: form.due_time || null,
       calendar_linked: form.calendar_linked && !!form.due_date,
       reminder_type: form.due_date ? form.reminder_type : 'none',
+      recurrence: form.recurrence,
       recurrence_end: form.recurrence_end || null,
     }
+    let result
     if (editing) {
-      await updateTask(editing.id, payload as any)
+      result = await updateTask(editing.id, payload as any)
     } else {
-      await addTask(payload as any)
+      result = await addTask(payload as any)
     }
-    setShowModal(false)
+    if (result !== null) setShowModal(false)
   }
 
   const inp = (style: React.CSSProperties = {}) => ({
