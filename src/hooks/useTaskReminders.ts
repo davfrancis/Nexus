@@ -59,22 +59,27 @@ export function useTaskReminders(enabled: boolean) {
   }, [])
 
   const checkReminders = useCallback(async () => {
-    if (permissionRef.current !== 'granted') return
-    try {
-      const res = await fetch('/api/tasks/reminders')
-      if (!res.ok) return
-      const { reminders } = await res.json() as { reminders: ReminderItem[] }
-      for (const item of reminders ?? []) {
-        const { title, body } = buildNotification(item)
-        new Notification(title, {
-          body,
-          icon: '/favicon.ico',
-          tag: `task-reminder-${item.id}-${item.kind}`,
-        })
-      }
-    } catch {
-      // silently ignore network errors
+    // Browser notifications (se permitido)
+    if (permissionRef.current === 'granted') {
+      try {
+        const res = await fetch('/api/tasks/reminders')
+        if (res.ok) {
+          const { reminders } = await res.json() as { reminders: ReminderItem[] }
+          for (const item of reminders ?? []) {
+            const { title, body } = buildNotification(item)
+            new Notification(title, {
+              body,
+              icon: '/favicon.ico',
+              tag: `task-reminder-${item.id}-${item.kind}`,
+            })
+          }
+        }
+      } catch { /* ignore */ }
     }
+    // WhatsApp notifications (independente do browser)
+    try {
+      await fetch('/api/notify/whatsapp')
+    } catch { /* ignore */ }
   }, [])
 
   useEffect(() => {

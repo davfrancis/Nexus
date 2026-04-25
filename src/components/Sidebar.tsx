@@ -17,6 +17,7 @@ import {
   Timer,
   Heart,
   Wallet,
+  Settings,
   LogOut,
 } from 'lucide-react'
 
@@ -38,6 +39,8 @@ const NAV: NavItem[] = [
   { href: '/dashboard/foco',         icon: <Timer           size={18} strokeWidth={1.75} />, label: 'Foco'         },
   { href: '/dashboard/saude',        icon: <Heart           size={18} strokeWidth={1.75} />, label: 'Saúde'        },
   { href: '/dashboard/financas',     icon: <Wallet          size={18} strokeWidth={1.75} />, label: 'Finanças'     },
+  { divider: true },
+  { href: '/dashboard/settings',    icon: <Settings        size={18} strokeWidth={1.75} />, label: 'Configurações' },
 ]
 
 export default function Sidebar() {

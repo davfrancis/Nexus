@@ -15,6 +15,8 @@ export type Database = {
           google_access_token: string | null
           google_refresh_token: string | null
           google_token_expiry: string | null
+          whatsapp_phone: string | null
+          whatsapp_api_key: string | null
           created_at: string
         }
         Insert: {
@@ -25,6 +27,8 @@ export type Database = {
           google_access_token?: string | null
           google_refresh_token?: string | null
           google_token_expiry?: string | null
+          whatsapp_phone?: string | null
+          whatsapp_api_key?: string | null
           created_at?: string
         }
         Update: {
@@ -35,6 +39,8 @@ export type Database = {
           google_access_token?: string | null
           google_refresh_token?: string | null
           google_token_expiry?: string | null
+          whatsapp_phone?: string | null
+          whatsapp_api_key?: string | null
           created_at?: string
         }
         Relationships: []

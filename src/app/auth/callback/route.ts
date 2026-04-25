@@ -17,8 +17,13 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const { data: sessionData, error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
+      // Se veio do OAuth do Google, passa pelo google-finish para salvar o provider_token
+      const isGoogle = sessionData?.session?.user?.app_metadata?.provider === 'google'
+      if (isGoogle) {
+        return NextResponse.redirect(`${origin}/auth/google-finish`)
+      }
       return NextResponse.redirect(`${origin}${next}`)
     }
   }
