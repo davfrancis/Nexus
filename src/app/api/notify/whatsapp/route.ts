@@ -38,6 +38,7 @@ async function sendWhatsApp(
       headers: {
         'Content-Type': 'application/json',
         'apikey': evolutionKey,
+        'ngrok-skip-browser-warning': '1',
       },
       body: JSON.stringify({
         number: phone,

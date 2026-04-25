@@ -33,6 +33,7 @@ export async function POST() {
       headers: {
         'Content-Type': 'application/json',
         'apikey': evolutionKey,
+        'ngrok-skip-browser-warning': '1',
       },
       body: JSON.stringify({
         number: profile.whatsapp_phone,
