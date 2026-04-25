@@ -102,6 +102,30 @@ export async function POST(req: Request) {
     .single()
 
   if (error) {
+    // Se o erro for de coluna desconhecida (migrations não aplicadas), tenta sem os novos campos
+    if (error.message.includes('column') || error.code === '42703') {
+      const safePayload = {
+        user_id: insertPayload.user_id,
+        title: insertPayload.title,
+        description: insertPayload.description,
+        category: insertPayload.category,
+        priority: insertPayload.priority,
+        status: insertPayload.status,
+        due_date: insertPayload.due_date,
+        calendar_linked: insertPayload.calendar_linked,
+        reminder_type: insertPayload.reminder_type,
+        reminder_sent: insertPayload.reminder_sent,
+        recurrence: insertPayload.recurrence,
+        recurrence_end: insertPayload.recurrence_end,
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: safeData, error: safeError } = await admin.from('tasks').insert(safePayload as any).select().single()
+      if (safeError) {
+        console.error('[tasks/POST] Safe insert error:', safeError.message)
+        return NextResponse.json({ error: 'Failed to create task' }, { status: 500 })
+      }
+      return NextResponse.json({ task: safeData })
+    }
     console.error('[tasks/POST] Insert error:', error.message)
     return NextResponse.json({ error: 'Failed to create task' }, { status: 500 })
   }

@@ -58,6 +58,8 @@ export default function TasksPage() {
   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM })
   const [filter, setFilter] = useState<string>('all')
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default')
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const router = useRouter()
 
   const { requestPermission } = useTaskReminders(notifPermission === 'granted')
@@ -75,7 +77,7 @@ export default function TasksPage() {
 
   const filtered = filter === 'all' ? tasks : tasks.filter(t => t.category === filter)
 
-  const openNew = () => { setEditing(null); setForm({ ...EMPTY_FORM }); setShowModal(true) }
+  const openNew = () => { setEditing(null); setForm({ ...EMPTY_FORM }); setSaveError(null); setShowModal(true) }
   const openEdit = (t: Task) => {
     setEditing(t)
     setForm({
@@ -94,11 +96,14 @@ export default function TasksPage() {
       recurrence: t.recurrence || 'none',
       recurrence_end: t.recurrence_end || '',
     })
+    setSaveError(null)
     setShowModal(true)
   }
 
   const handleSave = async () => {
     if (!form.title.trim()) return
+    setSaving(true)
+    setSaveError(null)
     const payload = {
       title: form.title.trim(),
       description: form.description || null,
@@ -121,7 +126,12 @@ export default function TasksPage() {
     } else {
       result = await addTask(payload as any)
     }
-    if (result !== null) setShowModal(false)
+    setSaving(false)
+    if (result !== null) {
+      setShowModal(false)
+    } else {
+      setSaveError('Erro ao salvar tarefa. Tente novamente.')
+    }
   }
 
   const inp = (style: React.CSSProperties = {}) => ({
@@ -462,10 +472,15 @@ export default function TasksPage() {
               </div>
             </div>
 
+            {saveError && (
+              <div style={{ marginBottom: 12, padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.3)', color: 'var(--red)', fontSize: 12 }}>
+                {saveError}
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowModal(false)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
-              <button onClick={handleSave} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>
-                {editing ? 'Salvar' : form.calendar_linked && form.due_date ? 'Criar e Vincular' : 'Criar Tarefa'}
+              <button onClick={() => setShowModal(false)} disabled={saving} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={handleSave} disabled={saving} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 500, opacity: saving ? 0.7 : 1 }}>
+                {saving ? 'Salvando...' : editing ? 'Salvar' : form.calendar_linked && form.due_date ? 'Criar e Vincular' : 'Criar Tarefa'}
               </button>
             </div>
           </div>
