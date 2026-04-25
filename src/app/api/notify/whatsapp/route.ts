@@ -1,5 +1,5 @@
 // src/app/api/notify/whatsapp/route.ts
-// Envia notificações WhatsApp via CallMeBot (gratuito, pessoal)
+// Envia notificações WhatsApp via Evolution API (self-hosted)
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -25,11 +25,29 @@ function formatDate(date: string, time: string | null): string {
   return time ? `${d}/${m}/${y} às ${time}` : `${d}/${m}/${y}`
 }
 
-async function sendWhatsApp(phone: string, apiKey: string, message: string): Promise<boolean> {
-  const encoded = encodeURIComponent(message)
-  const url = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encoded}&apikey=${apiKey}`
-  const res = await fetch(url)
-  return res.ok
+async function sendWhatsApp(
+  evolutionUrl: string,
+  evolutionKey: string,
+  instanceName: string,
+  phone: string,
+  message: string,
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${evolutionUrl}/message/sendText/${instanceName}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': evolutionKey,
+      },
+      body: JSON.stringify({
+        number: phone,
+        text: message,
+      }),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
 }
 
 export async function GET() {
@@ -37,17 +55,24 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const evolutionUrl      = process.env.EVOLUTION_API_URL
+  const evolutionKey      = process.env.EVOLUTION_API_KEY
+  const evolutionInstance = process.env.EVOLUTION_INSTANCE_NAME ?? 'nexus'
+
+  if (!evolutionUrl || !evolutionKey) {
+    return NextResponse.json({ error: 'Evolution API not configured' }, { status: 400 })
+  }
+
   const admin = createAdminClient()
 
-  // Busca configurações de WhatsApp do perfil
   const { data: profile } = await admin
     .from('profiles')
-    .select('whatsapp_phone, whatsapp_api_key')
+    .select('whatsapp_phone')
     .eq('id', user.id)
     .single()
 
-  if (!profile?.whatsapp_phone || !profile?.whatsapp_api_key) {
-    return NextResponse.json({ error: 'WhatsApp not configured' }, { status: 400 })
+  if (!profile?.whatsapp_phone) {
+    return NextResponse.json({ error: 'WhatsApp phone not configured' }, { status: 400 })
   }
 
   const now = Date.now()
@@ -75,7 +100,7 @@ export async function GET() {
       const when = formatDate(task.start_date!, (task as any).start_time ?? null)
       const label = REMINDER_LABEL[task.start_reminder_type] ?? task.start_reminder_type
       const msg = `⏰ *NEXUS — Tarefa iniciando em breve*\n\n📋 ${task.title}\n🕐 Início em ${label} — ${when}`
-      await sendWhatsApp(profile.whatsapp_phone, profile.whatsapp_api_key, msg)
+      await sendWhatsApp(evolutionUrl, evolutionKey, evolutionInstance, profile.whatsapp_phone, msg)
       sent.push(`start:${task.id}`)
       startIdsToMark.push(task.id)
     }
@@ -101,7 +126,7 @@ export async function GET() {
       const when = formatDate(task.due_date!, (task as any).due_time ?? null)
       const label = REMINDER_LABEL[task.reminder_type] ?? task.reminder_type
       const msg = `🔔 *NEXUS — Prazo se aproximando*\n\n📋 ${task.title}\n⏳ Vence em ${label} — ${when}`
-      await sendWhatsApp(profile.whatsapp_phone, profile.whatsapp_api_key, msg)
+      await sendWhatsApp(evolutionUrl, evolutionKey, evolutionInstance, profile.whatsapp_phone, msg)
       sent.push(`due:${task.id}`)
       dueIdsToMark.push(task.id)
     }

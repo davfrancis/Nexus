@@ -1,16 +1,19 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { MessageSquare, Calendar, Check, ExternalLink } from 'lucide-react'
+import { MessageSquare, Calendar, Check, ExternalLink, Smartphone } from 'lucide-react'
 
 export default function SettingsPage() {
   const [phone, setPhone]   = useState('')
-  const [apiKey, setApiKey] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved]   = useState(false)
   const [hasGcal, setHasGcal] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testMsg, setTestMsg] = useState<string | null>(null)
+
+  const evolutionConfigured = !!(
+    process.env.NEXT_PUBLIC_EVOLUTION_CONFIGURED === 'true'
+  )
 
   useEffect(() => {
     async function load() {
@@ -18,25 +21,23 @@ export default function SettingsPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
       const { data } = await supabase.from('profiles')
-        .select('whatsapp_phone, whatsapp_api_key, google_access_token')
+        .select('whatsapp_phone, google_access_token')
         .eq('id', user.id).single()
       if (data) {
         setPhone(data.whatsapp_phone ?? '')
-        setApiKey(data.whatsapp_api_key ?? '')
         setHasGcal(!!data.google_access_token)
       }
     }
     load()
   }, [])
 
-  const saveWhatsApp = async () => {
+  const savePhone = async () => {
     setSaving(true)
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     await supabase.from('profiles').update({
       whatsapp_phone: phone.trim() || null,
-      whatsapp_api_key: apiKey.trim() || null,
     }).eq('id', user.id)
     setSaving(false)
     setSaved(true)
@@ -47,10 +48,9 @@ export default function SettingsPage() {
     setTesting(true)
     setTestMsg(null)
     try {
-      const encoded = encodeURIComponent('✅ *NEXUS* — Teste de notificação WhatsApp funcionando!')
-      const url = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encoded}&apikey=${apiKey}`
-      const res = await fetch(url)
-      setTestMsg(res.ok ? 'Mensagem enviada! Verifique seu WhatsApp.' : 'Falha ao enviar. Verifique o número e a API key.')
+      const res = await fetch('/api/notify/whatsapp/test', { method: 'POST' })
+      const json = await res.json()
+      setTestMsg(res.ok ? 'Mensagem enviada! Verifique seu WhatsApp.' : (json.error ?? 'Falha ao enviar.'))
     } catch {
       setTestMsg('Erro de rede ao tentar enviar.')
     }
@@ -98,36 +98,38 @@ export default function SettingsPage() {
         )}
       </div>
 
-      {/* WhatsApp via CallMeBot */}
+      {/* WhatsApp via Evolution API */}
       <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 12, padding: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
           <MessageSquare size={18} strokeWidth={1.75} color="#25D366" />
           <h2 style={{ fontSize: 15, fontWeight: 600 }}>Notificações WhatsApp</h2>
+          {evolutionConfigured && (
+            <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--green)', background: 'rgba(34,197,94,.1)', border: '1px solid rgba(34,197,94,.2)', padding: '2px 10px', borderRadius: 100 }}>
+              Servidor ativo
+            </span>
+          )}
         </div>
+
+        {!evolutionConfigured && (
+          <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, fontSize: 12, background: 'rgba(234,179,8,.08)', border: '1px solid rgba(234,179,8,.2)', color: 'var(--yellow, #EAB308)' }}>
+            <strong>Evolution API não configurada.</strong> Siga o guia de setup para rodar localmente com Docker + ngrok.
+          </div>
+        )}
+
         <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>
-          Usa o CallMeBot (gratuito). Para ativar:{' '}
-          <a href="https://www.callmebot.com/blog/free-api-whatsapp-messages/" target="_blank" rel="noreferrer"
-            style={{ color: 'var(--accent2)' }}>
-            envie "I allow callmebot to send me messages" para +34 644 36 04 52 no WhatsApp
-          </a>{' '}
-          e aguarde a API key chegar.
+          Configure seu número para receber lembretes de tarefas diretamente no WhatsApp.
         </p>
 
-        <div style={{ marginBottom: 14 }}>
-          <label style={label}>Seu número (com código do país, sem +)</label>
+        <div style={{ marginBottom: 20 }}>
+          <label style={label}>
+            <Smartphone size={11} style={{ display: 'inline', marginRight: 4 }} />
+            Seu número (com código do país, sem + ou espaços)
+          </label>
           <input
             style={inp} placeholder="5511999999999"
             value={phone} onChange={e => setPhone(e.target.value)}
           />
           <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Ex: 5511999999999 (Brasil +55, DDD, número)</div>
-        </div>
-
-        <div style={{ marginBottom: 20 }}>
-          <label style={label}>API Key do CallMeBot</label>
-          <input
-            style={inp} placeholder="123456"
-            value={apiKey} onChange={e => setApiKey(e.target.value)}
-          />
         </div>
 
         {testMsg && (
@@ -140,12 +142,12 @@ export default function SettingsPage() {
         )}
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={saveWhatsApp} disabled={saving}
+          <button onClick={savePhone} disabled={saving}
             style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-            {saved ? <><Check size={13} /> Salvo!</> : saving ? 'Salvando...' : 'Salvar'}
+            {saved ? <><Check size={13} /> Salvo!</> : saving ? 'Salvando...' : 'Salvar número'}
           </button>
-          <button onClick={testWhatsApp} disabled={testing || !phone || !apiKey}
-            style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer', opacity: (!phone || !apiKey) ? 0.5 : 1 }}>
+          <button onClick={testWhatsApp} disabled={testing || !phone || !evolutionConfigured}
+            style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer', opacity: (!phone || !evolutionConfigured) ? 0.5 : 1 }}>
             {testing ? 'Enviando...' : 'Testar'}
           </button>
         </div>
