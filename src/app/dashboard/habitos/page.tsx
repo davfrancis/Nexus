@@ -111,7 +111,7 @@ export default function HabitosPage() {
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{habit.name}</div>
                         {streak > 0 && (
-                          <div style={{ fontSize: 10, color: 'var(--amber)' }}>🔥 {streak} dias</div>
+                          <div style={{ fontSize: 10, color: 'var(--amber)' }}>{streak} dias</div>
                         )}
                       </div>
                       <button onClick={() => removeHabit(habit.id)}

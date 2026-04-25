@@ -8,6 +8,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useHabits } from '@/hooks/useHabits'
 import type { Task, Event, Habit, HabitLog, HealthLog, FocusSession } from '@/types/database'
+import { Timer } from 'lucide-react'
 
 interface Props {
   initialData: {
@@ -25,10 +26,10 @@ interface Props {
 }
 
 const CAT_COLORS: Record<string, string> = {
-  work: '#4A9EE8', personal: '#E878B8', gym: '#3ECFA0', study: '#F0A03C', urgent: '#F05C5C'
+  work: '#3B82F6', personal: '#EC4899', gym: '#22C55E', study: '#F59E0B', urgent: '#EF4444'
 }
 const CAT_TAG: Record<string, string> = {
-  work: 'rgba(74,158,232,.15)', personal: 'rgba(232,120,184,.15)', gym: 'rgba(62,207,160,.15)', study: 'rgba(240,160,60,.15)', urgent: 'rgba(240,92,92,.15)'
+  work: 'rgba(59,130,246,.12)', personal: 'rgba(236,72,153,.12)', gym: 'rgba(34,197,94,.12)', study: 'rgba(245,158,11,.12)', urgent: 'rgba(239,68,68,.12)'
 }
 
 const QUOTES = [
@@ -133,7 +134,7 @@ export default function DashboardClient({ initialData }: Props) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
           <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 26, fontWeight: 700, letterSpacing: -.5 }}>
-            {greeting}, <span style={{ color: 'var(--accent2)' }}>{userName}</span> 👋
+            {greeting}, <span style={{ color: 'var(--accent2)' }}>{userName}</span>
           </h1>
           <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 4, textTransform: 'capitalize' }}>{dateLabel}</div>
         </div>
@@ -148,9 +149,9 @@ export default function DashboardClient({ initialData }: Props) {
       </div>
 
       {/* Banner */}
-      <div style={{ background: 'rgba(124,111,212,.1)', border: '1px solid rgba(124,111,212,.3)', borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+      <div style={{ background: 'rgba(99,102,241,.08)', border: '1px solid rgba(99,102,241,.2)', borderRadius: 10, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div className="pulse-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)' }} />
+          <div className="pulse-dot" style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--green)' }} />
           <div>
             <div style={{ fontSize: 13, fontWeight: 500 }}>Modo Produtivo Ativo</div>
             <div style={{ fontSize: 11, color: 'var(--text3)' }}>
@@ -158,8 +159,8 @@ export default function DashboardClient({ initialData }: Props) {
             </div>
           </div>
         </div>
-        <Link href="/dashboard/foco" style={{ padding: '5px 12px', borderRadius: 8, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--text)', fontSize: 12, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
-          Iniciar Foco ⏱
+        <Link href="/dashboard/foco" style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--text)', fontSize: 12, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Timer size={13} strokeWidth={1.75} /> Iniciar Foco
         </Link>
       </div>
 
@@ -169,11 +170,11 @@ export default function DashboardClient({ initialData }: Props) {
         {metricCard('Hábitos', <>{doneHabits}<span style={{ fontSize: 16, color: 'var(--text3)' }}>/{habits.length}</span></>, `${habitPct}% de hoje`, 'var(--green)', habitPct)}
         <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 12, padding: 18 }}>
           <div style={{ fontSize: 11, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, fontFamily: 'var(--font-d)', fontWeight: 600 }}>Streak</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span className="bounce-y" style={{ fontSize: 24, display: 'inline-block' }}>🔥</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
             <span style={{ fontFamily: 'var(--font-d)', fontSize: 28, fontWeight: 700, color: 'var(--amber)' }}>{maxStreak}</span>
+            <span style={{ fontSize: 13, color: 'var(--amber)', opacity: .7 }}>dias</span>
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text3)' }}>dias consecutivos</div>
+          <div style={{ fontSize: 12, color: 'var(--text3)' }}>sequência ativa</div>
         </div>
         <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 12, padding: 18 }}>
           <div style={{ fontSize: 11, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, fontFamily: 'var(--font-d)', fontWeight: 600 }}>Próx. Evento</div>
@@ -193,7 +194,7 @@ export default function DashboardClient({ initialData }: Props) {
               <Link href="/dashboard/tasks" style={{ padding: '5px 11px', borderRadius: 8, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--text)', fontSize: 12, textDecoration: 'none' }}>Ver tudo</Link>
             </div>
             {tasks.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '28px 0', color: 'var(--text3)', fontSize: 13 }}>📋 Sem tarefas</div>
+              <div style={{ textAlign: 'center', padding: '28px 0', color: 'var(--text3)', fontSize: 13 }}>Sem tarefas</div>
             ) : tasks.slice(0, 6).map(t => (
               <div key={t.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
                 <div style={{ width: 18, height: 18, borderRadius: '50%', border: t.status === 'done' ? 'none' : '1.5px solid var(--border2)', background: t.status === 'done' ? 'var(--green2)' : 'transparent', flexShrink: 0, marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'var(--green)' }}>
@@ -216,7 +217,7 @@ export default function DashboardClient({ initialData }: Props) {
                 <Link href="/dashboard/agenda" style={{ padding: '5px 11px', borderRadius: 8, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--text)', fontSize: 12, textDecoration: 'none' }}>Abrir</Link>
               </div>
               {todayEvents.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text3)', fontSize: 12 }}>📅 Nenhum evento hoje</div>
+                <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text3)', fontSize: 12 }}>Nenhum evento hoje</div>
               ) : todayEvents.slice(0, 4).map(ev => (
                 <div key={ev.id} style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border)', alignItems: 'flex-start' }}>
                   <span style={{ fontFamily: 'var(--font-m)', fontSize: 11, color: 'var(--text3)', width: 40, flexShrink: 0 }}>{ev.start_time?.slice(0,5) || '?'}</span>
@@ -232,12 +233,23 @@ export default function DashboardClient({ initialData }: Props) {
           {card(
             <>
               <div style={{ fontFamily: 'var(--font-d)', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1.5, color: 'var(--text3)', marginBottom: 14 }}>Como você está?</div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {['😄','🙂','😐','😴','😔'].map(e => (
-                  <div key={e} onClick={() => setMood(e)} style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--bg3)', border: `1.5px solid ${mood === e ? 'var(--accent2)' : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, cursor: 'pointer', transition: 'all .2s', transform: mood === e ? 'scale(1.1)' : 'scale(1)' }}>{e}</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {[
+                  { key: 'great',  label: 'Ótimo',  color: '#22C55E' },
+                  { key: 'good',   label: 'Bem',    color: '#3B82F6' },
+                  { key: 'ok',     label: 'Ok',     color: '#A1A1AA' },
+                  { key: 'tired',  label: 'Cansado',color: '#F59E0B' },
+                  { key: 'bad',    label: 'Mal',    color: '#EF4444' },
+                ].map(m => (
+                  <div key={m.key} onClick={() => setMood(m.key)}
+                    style={{ flex: 1, padding: '7px 4px', borderRadius: 7, textAlign: 'center', fontSize: 11, fontWeight: 500, cursor: 'pointer', transition: 'all .15s',
+                      background: mood === m.key ? `${m.color}18` : 'var(--bg3)',
+                      border: `1.5px solid ${mood === m.key ? m.color : 'var(--border)'}`,
+                      color: mood === m.key ? m.color : 'var(--text3)',
+                    }}>{m.label}</div>
                 ))}
               </div>
-              {mood && <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 10 }}>Humor registrado: {mood}</div>}
+              {mood && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 8 }}>Humor registrado.</div>}
             </>
           )}
         </div>

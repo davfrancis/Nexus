@@ -6,6 +6,7 @@ import { useTaskReminders } from '@/hooks/useTaskReminders'
 import type { Task } from '@/types/database'
 import ModalPortal from '@/components/ModalPortal'
 import { useRouter } from 'next/navigation'
+import { Bell, RefreshCw, Calendar, BellRing } from 'lucide-react'
 
 const COLS = [
   { key: 'todo',  label: 'A Fazer',   color: 'var(--text3)' },
@@ -14,7 +15,7 @@ const COLS = [
 ] as const
 
 const CAT_COLORS: Record<string, string> = {
-  work: '#4A9EE8', personal: '#E878B8', gym: '#3ECFA0', study: '#F0A03C', urgent: '#F05C5C'
+  work: '#3B82F6', personal: '#EC4899', gym: '#22C55E', study: '#F59E0B', urgent: '#EF4444'
 }
 const PRIORITIES = ['high', 'medium', 'low'] as const
 const CATEGORIES = ['work', 'personal', 'gym', 'study', 'urgent'] as const
@@ -144,8 +145,8 @@ export default function TasksPage() {
           <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 4 }}>
             {tasks.filter(t => t.status !== 'done').length} pendentes · {tasks.filter(t => t.status === 'done').length} concluídas
             {tasks.filter(t => t.calendar_linked).length > 0 && (
-              <span style={{ marginLeft: 10, color: 'var(--accent2)' }}>
-                📅 {tasks.filter(t => t.calendar_linked).length} no calendário
+              <span style={{ marginLeft: 10, color: 'var(--accent2)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <Calendar size={12} strokeWidth={1.75} /> {tasks.filter(t => t.calendar_linked).length} no calendário
               </span>
             )}
           </div>
@@ -155,12 +156,12 @@ export default function TasksPage() {
           {notifPermission !== 'granted' && notifPermission !== 'denied' && (
             <button onClick={handleEnableNotifications}
               style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg3)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-              🔔 Ativar alertas
+              <Bell size={13} strokeWidth={1.75} /> Ativar alertas
             </button>
           )}
           {notifPermission === 'granted' && (
-            <span style={{ fontSize: 11, color: 'var(--green)', padding: '5px 10px', borderRadius: 8, background: 'rgba(62,207,160,.1)', border: '1px solid rgba(62,207,160,.25)' }}>
-              🔔 Alertas ativos
+            <span style={{ fontSize: 11, color: 'var(--green)', padding: '5px 10px', borderRadius: 8, background: 'rgba(34,197,94,.08)', border: '1px solid rgba(34,197,94,.2)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <BellRing size={12} strokeWidth={1.75} /> Alertas ativos
             </span>
           )}
           <select value={filter} onChange={e => setFilter(e.target.value)}
@@ -212,11 +213,11 @@ export default function TasksPage() {
                       {t.calendar_linked && (
                         <div style={{
                           position: 'absolute', top: 8, right: 34,
-                          fontSize: 10, padding: '1px 6px', borderRadius: 100,
-                          background: 'rgba(124,111,212,.15)', color: 'var(--accent2)',
-                          fontWeight: 600, letterSpacing: .3,
+                          fontSize: 10, padding: '1px 7px', borderRadius: 100,
+                          background: 'rgba(99,102,241,.12)', color: 'var(--accent2)',
+                          fontWeight: 500, display: 'flex', alignItems: 'center', gap: 3,
                         }}>
-                          📅 agenda
+                          <Calendar size={10} strokeWidth={1.75} /> agenda
                         </div>
                       )}
 
@@ -229,20 +230,20 @@ export default function TasksPage() {
                       <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 100, background: `${CAT_COLORS[t.category]}20`, color: CAT_COLORS[t.category], fontWeight: 600 }}>{t.category}</span>
                         <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 100, background: 'var(--bg4)', color: t.priority === 'high' ? 'var(--red)' : t.priority === 'medium' ? 'var(--amber)' : 'var(--green)' }}>{t.priority}</span>
-                        {t.start_date && <span style={{ fontSize: 10, color: 'var(--text3)' }}>▶ {t.start_date}</span>}
+                        {t.start_date && <span style={{ fontSize: 10, color: 'var(--text3)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><span style={{ opacity: .5 }}>desde</span> {t.start_date}</span>}
                         {t.due_date && (
-                          <span style={{ fontSize: 10, color: 'var(--text3)' }}>
-                            📅 {t.due_date}{t.due_time ? ` ${t.due_time}` : ''}
+                          <span style={{ fontSize: 10, color: 'var(--text3)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                            <Calendar size={9} strokeWidth={1.75} /> {t.due_date}{t.due_time ? ` ${t.due_time}` : ''}
                           </span>
                         )}
                         {reminderBadge(t) && (
-                          <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 100, background: 'rgba(240,160,60,.12)', color: 'var(--amber)', fontWeight: 500 }}>
-                            🔔 {reminderBadge(t)}
+                          <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 100, background: 'rgba(245,158,11,.1)', color: 'var(--amber)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                            <Bell size={9} strokeWidth={1.75} /> {reminderBadge(t)}
                           </span>
                         )}
                         {recurrenceBadge(t) && (
-                          <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 100, background: 'rgba(74,158,232,.12)', color: '#4A9EE8', fontWeight: 500 }}>
-                            🔁 {recurrenceBadge(t)}
+                          <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 100, background: 'rgba(59,130,246,.1)', color: 'var(--blue)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                            <RefreshCw size={9} strokeWidth={1.75} /> {recurrenceBadge(t)}
                           </span>
                         )}
                       </div>
@@ -335,8 +336,8 @@ export default function TasksPage() {
 
             {/* Lembrete */}
             <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-d)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, display: 'block' }}>
-                🔔 Lembrete
+              <label style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-d)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Bell size={11} strokeWidth={1.75} /> Lembrete
               </label>
               <select
                 value={form.reminder_type}
@@ -353,7 +354,7 @@ export default function TasksPage() {
               )}
               {form.due_date && form.reminder_type !== 'none' && notifPermission !== 'granted' && (
                 <div style={{ fontSize: 11, color: 'var(--amber)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  ⚠️ Notificações do navegador não autorizadas.{' '}
+                  Notificações do navegador não autorizadas.{' '}
                   <button onClick={handleEnableNotifications}
                     style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 11, padding: 0, textDecoration: 'underline' }}>
                     Ativar agora
@@ -364,8 +365,8 @@ export default function TasksPage() {
 
             {/* Recorrência */}
             <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-d)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, display: 'block' }}>
-                🔁 Repetição
+              <label style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-d)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <RefreshCw size={11} strokeWidth={1.75} /> Repetição
               </label>
               <select
                 value={form.recurrence}
@@ -407,8 +408,8 @@ export default function TasksPage() {
                 }} />
               </div>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 500, color: form.calendar_linked ? 'var(--accent2)' : 'var(--text)' }}>
-                  📅 Vincular ao Calendário
+                <div style={{ fontSize: 13, fontWeight: 500, color: form.calendar_linked ? 'var(--accent2)' : 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Calendar size={14} strokeWidth={1.75} /> Vincular ao Calendário
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
                   {form.calendar_linked
@@ -423,7 +424,7 @@ export default function TasksPage() {
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => setShowModal(false)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
               <button onClick={handleSave} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>
-                {editing ? 'Salvar' : form.calendar_linked && form.due_date ? '📅 Criar e Vincular' : 'Criar Tarefa'}
+                {editing ? 'Salvar' : form.calendar_linked && form.due_date ? 'Criar e Vincular' : 'Criar Tarefa'}
               </button>
             </div>
           </div>
