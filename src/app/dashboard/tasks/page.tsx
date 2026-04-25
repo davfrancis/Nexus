@@ -197,12 +197,12 @@ export default function TasksPage() {
           ))}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, alignItems: 'start' }}>
           {COLS.map(col => {
             const colTasks = filtered.filter(t => t.status === col.key)
             return (
-              <div key={col.key} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div key={col.key} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 160px)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexShrink: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: col.color }} />
                     <span style={{ fontFamily: 'var(--font-d)', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--text3)' }}>{col.label}</span>
@@ -210,7 +210,7 @@ export default function TasksPage() {
                   <span style={{ fontSize: 11, background: 'var(--bg3)', padding: '2px 8px', borderRadius: 100, color: 'var(--text3)' }}>{colTasks.length}</span>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 80 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 80, overflowY: 'auto', paddingRight: 2 }}>
                   {colTasks.map(t => (
                     <div key={t.id}
                       style={{
