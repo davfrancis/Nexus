@@ -44,7 +44,7 @@ const RECURRENCE_OPTIONS = [
 
 const EMPTY_FORM = {
   title: '', description: '', category: 'work', priority: 'medium',
-  status: 'todo', due_date: '', calendar_linked: false,
+  status: 'todo', start_date: '', due_date: '', due_time: '', calendar_linked: false,
   reminder_type: 'none', recurrence: 'none', recurrence_end: '',
 }
 
@@ -81,7 +81,9 @@ export default function TasksPage() {
       category: t.category,
       priority: t.priority,
       status: t.status,
+      start_date: t.start_date || '',
       due_date: t.due_date || '',
+      due_time: t.due_time || '',
       calendar_linked: t.calendar_linked ?? false,
       reminder_type: t.reminder_type || 'none',
       recurrence: t.recurrence || 'none',
@@ -95,7 +97,9 @@ export default function TasksPage() {
     const payload = {
       ...form,
       description: form.description || null,
+      start_date: form.start_date || null,
       due_date: form.due_date || null,
+      due_time: form.due_time || null,
       calendar_linked: form.calendar_linked && !!form.due_date,
       reminder_type: form.due_date ? form.reminder_type : 'none',
       recurrence_end: form.recurrence_end || null,
@@ -225,7 +229,12 @@ export default function TasksPage() {
                       <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 100, background: `${CAT_COLORS[t.category]}20`, color: CAT_COLORS[t.category], fontWeight: 600 }}>{t.category}</span>
                         <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 100, background: 'var(--bg4)', color: t.priority === 'high' ? 'var(--red)' : t.priority === 'medium' ? 'var(--amber)' : 'var(--green)' }}>{t.priority}</span>
-                        {t.due_date && <span style={{ fontSize: 10, color: 'var(--text3)' }}>📅 {t.due_date}</span>}
+                        {t.start_date && <span style={{ fontSize: 10, color: 'var(--text3)' }}>▶ {t.start_date}</span>}
+                        {t.due_date && (
+                          <span style={{ fontSize: 10, color: 'var(--text3)' }}>
+                            📅 {t.due_date}{t.due_time ? ` ${t.due_time}` : ''}
+                          </span>
+                        )}
                         {reminderBadge(t) && (
                           <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 100, background: 'rgba(240,160,60,.12)', color: 'var(--amber)', fontWeight: 500 }}>
                             🔔 {reminderBadge(t)}
@@ -300,9 +309,28 @@ export default function TasksPage() {
               ))}
             </div>
 
+            {/* Data de início */}
             <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-d)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, display: 'block' }}>Data limite</label>
-              <input type="date" value={form.due_date} onChange={e => setForm(p => ({ ...p, due_date: e.target.value }))} style={inp()} />
+              <label style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-d)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, display: 'block' }}>Data de início</label>
+              <input type="date" value={form.start_date} onChange={e => setForm(p => ({ ...p, start_date: e.target.value }))} style={inp()} />
+            </div>
+
+            {/* Data de conclusão + Horário */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px', gap: 10, marginBottom: 14 }}>
+              <div>
+                <label style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-d)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, display: 'block' }}>Data de conclusão</label>
+                <input type="date" value={form.due_date} onChange={e => setForm(p => ({ ...p, due_date: e.target.value }))} style={inp()} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-d)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, display: 'block' }}>Horário</label>
+                <input
+                  type="time"
+                  value={form.due_time}
+                  onChange={e => setForm(p => ({ ...p, due_time: e.target.value }))}
+                  disabled={!form.due_date}
+                  style={{ ...inp(), opacity: form.due_date ? 1 : 0.5 }}
+                />
+              </div>
             </div>
 
             {/* Lembrete */}

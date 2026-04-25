@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
-  const { title, description, category, priority, status, due_date, calendar_linked, reminder_type, recurrence, recurrence_end } = body
+  const { title, description, category, priority, status, start_date, due_date, due_time, calendar_linked, reminder_type, recurrence, recurrence_end } = body
 
   if (!title || typeof title !== 'string' || title.trim().length === 0) {
     return NextResponse.json({ error: 'title is required' }, { status: 400 })
@@ -78,7 +78,9 @@ export async function POST(req: Request) {
       category: (category as string) || 'work',
       priority: (priority as string) || 'medium',
       status: (status as string) || 'todo',
+      start_date: (start_date as string | null) || null,
       due_date: (due_date as string | null) || null,
+      due_time: (due_time as string | null) || null,
       calendar_linked: shouldLink,
       reminder_type: (reminder_type as string) || 'none',
       reminder_sent: false,

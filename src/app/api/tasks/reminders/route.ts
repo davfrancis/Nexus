@@ -28,7 +28,7 @@ export async function GET() {
   // Fetch tasks with reminders not yet sent and not done
   const { data: tasks, error } = await admin
     .from('tasks')
-    .select('id, title, due_date, reminder_type, reminder_sent, status')
+    .select('id, title, due_date, due_time, reminder_type, reminder_sent, status')
     .eq('user_id', user.id)
     .neq('reminder_type', 'none')
     .eq('reminder_sent', false)
@@ -44,8 +44,9 @@ export async function GET() {
     const minutesBefore = REMINDER_MINUTES[task.reminder_type]
     if (!minutesBefore) continue
 
-    // due_date is YYYY-MM-DD; assume 08:00 local (America/Sao_Paulo = UTC-3)
-    const dueMs = new Date(`${task.due_date}T08:00:00-03:00`).getTime()
+    // Use due_time if set, otherwise fall back to 08:00 (America/Sao_Paulo = UTC-3)
+    const timeStr = (task as { due_time?: string | null }).due_time || '08:00'
+    const dueMs = new Date(`${task.due_date}T${timeStr}:00-03:00`).getTime()
     const notifyAt = dueMs - minutesBefore * 60 * 1000
 
     if (now >= notifyAt) {
