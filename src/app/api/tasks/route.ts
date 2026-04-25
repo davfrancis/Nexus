@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
-  const { title, description, category, priority, status, start_date, due_date, due_time, calendar_linked, reminder_type, recurrence, recurrence_end } = body
+  const { title, description, category, priority, status, start_date, start_time, start_reminder_type, due_date, due_time, calendar_linked, reminder_type, recurrence, recurrence_end } = body
 
   if (!title || typeof title !== 'string' || title.trim().length === 0) {
     return NextResponse.json({ error: 'title is required' }, { status: 400 })
@@ -79,6 +79,9 @@ export async function POST(req: Request) {
       priority: (priority as string) || 'medium',
       status: (status as string) || 'todo',
       start_date: (start_date as string | null) || null,
+      start_time: (start_time as string | null) || null,
+      start_reminder_type: (start_reminder_type as string) || 'none',
+      start_reminder_sent: false,
       due_date: (due_date as string | null) || null,
       due_time: (due_time as string | null) || null,
       calendar_linked: shouldLink,
@@ -94,13 +97,16 @@ export async function POST(req: Request) {
 
   // Se vinculado ao calendário, criar evento espelho
   if (shouldLink && data) {
+    const evStartTime = (start_time as string | null) || (due_time as string | null) || null
+    const evEndTime   = (due_time as string | null) || evStartTime
+
     const eventInsert = {
       user_id: user.id,
       title: `📋 ${(title as string).trim()}`,
       description: (description as string | null) || null,
       event_date: due_date as string,
-      start_time: null as string | null,
-      end_time: null as string | null,
+      start_time: evStartTime,
+      end_time: evEndTime,
       category: (category as string) || 'work',
       recurrence: 'none' as const,
       source: 'local' as const,
@@ -115,7 +121,6 @@ export async function POST(req: Request) {
 
     if (eventError) {
       console.error('[tasks/POST] Falha ao criar evento espelho:', eventError.message)
-      // Retorna a tarefa mesmo com erro no evento, mas informa o cliente
       return NextResponse.json({ task: data, calendar_error: eventError.message })
     }
 
@@ -128,12 +133,24 @@ export async function POST(req: Request) {
         .single()
 
       if (profile?.google_access_token) {
+        // Monta reminders para o GCal com base nos tipos selecionados
+        const REMINDER_MINUTES: Record<string, number> = {
+          '15min': 15, '30min': 30, '1h': 60, '2h': 120,
+          '6h': 360, '12h': 720, '1day': 1440, '2days': 2880, '3days': 4320, '1week': 10080,
+        }
+        const gcalReminders: { method: string; minutes: number }[] = []
+        const startRem = (start_reminder_type as string) || 'none'
+        const dueRem   = (reminder_type as string) || 'none'
+        if (startRem !== 'none' && REMINDER_MINUTES[startRem]) gcalReminders.push({ method: 'email', minutes: REMINDER_MINUTES[startRem] })
+        if (dueRem   !== 'none' && REMINDER_MINUTES[dueRem])   gcalReminders.push({ method: 'email', minutes: REMINDER_MINUTES[dueRem] })
+
         const gcalResult = await createCalendarEvent(profile.google_access_token, {
           title: `📋 ${(title as string).trim()}`,
           description: (description as string) || '',
           date: due_date as string,
-          startTime: '00:00',
-          endTime: '00:00',
+          startTime: evStartTime || '00:00',
+          endTime: evEndTime || '00:00',
+          reminders: gcalReminders,
         })
         if (gcalResult) {
           await admin

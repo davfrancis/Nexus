@@ -1,9 +1,44 @@
 'use client'
 // src/hooks/useTaskReminders.ts
-// Polls /api/tasks/reminders every 2 minutes and fires browser notifications
 import { useEffect, useRef, useCallback } from 'react'
+import type { ReminderItem } from '@/app/api/tasks/reminders/route'
 
 const POLL_INTERVAL_MS = 2 * 60 * 1000 // 2 minutes
+
+const REMINDER_LABEL: Record<string, string> = {
+  '15min': '15 minutos',
+  '30min': '30 minutos',
+  '1h':    '1 hora',
+  '2h':    '2 horas',
+  '6h':    '6 horas',
+  '12h':   '12 horas',
+  '1day':  '1 dia',
+  '2days': '2 dias',
+  '3days': '3 dias',
+  '1week': '1 semana',
+}
+
+function formatDate(date: string, time: string | null): string {
+  const [y, m, d] = date.split('-')
+  const dateStr = `${d}/${m}/${y}`
+  return time ? `${dateStr} às ${time}` : dateStr
+}
+
+function buildNotification(item: ReminderItem): { title: string; body: string } {
+  const label = REMINDER_LABEL[item.reminder_type] ?? item.reminder_type
+  const when  = formatDate(item.date, item.time)
+
+  if (item.kind === 'start') {
+    return {
+      title: 'Tarefa iniciando em breve',
+      body:  `${item.title}\nInício em ${label} — ${when}`,
+    }
+  }
+  return {
+    title: 'Prazo se aproximando',
+    body:  `${item.title}\nVence em ${label} — ${when}`,
+  }
+}
 
 export function useTaskReminders(enabled: boolean) {
   const permissionRef = useRef<NotificationPermission>('default')
@@ -28,13 +63,13 @@ export function useTaskReminders(enabled: boolean) {
     try {
       const res = await fetch('/api/tasks/reminders')
       if (!res.ok) return
-      const { reminders } = await res.json() as { reminders: Array<{ id: string; title: string; due_date: string; reminder_type: string }> }
-      for (const task of reminders ?? []) {
-        const label = formatReminderLabel(task.reminder_type, task.due_date)
-        new Notification('⏰ Lembrete de Tarefa', {
-          body: `${task.title}\n${label}`,
+      const { reminders } = await res.json() as { reminders: ReminderItem[] }
+      for (const item of reminders ?? []) {
+        const { title, body } = buildNotification(item)
+        new Notification(title, {
+          body,
           icon: '/favicon.ico',
-          tag: `task-reminder-${task.id}`,
+          tag: `task-reminder-${item.id}-${item.kind}`,
         })
       }
     } catch {
@@ -47,30 +82,10 @@ export function useTaskReminders(enabled: boolean) {
     if (typeof window === 'undefined' || !('Notification' in window)) return
 
     permissionRef.current = Notification.permission
-
-    // Check immediately on mount, then poll
     checkReminders()
     const interval = setInterval(checkReminders, POLL_INTERVAL_MS)
     return () => clearInterval(interval)
   }, [enabled, checkReminders])
 
   return { requestPermission }
-}
-
-function formatReminderLabel(reminderType: string, dueDate: string): string {
-  const map: Record<string, string> = {
-    '15min': '15 minutos para o prazo',
-    '30min': '30 minutos para o prazo',
-    '1h':    '1 hora para o prazo',
-    '2h':    '2 horas para o prazo',
-    '6h':    '6 horas para o prazo',
-    '12h':   '12 horas para o prazo',
-    '1day':  '1 dia para o prazo',
-    '2days': '2 dias para o prazo',
-    '3days': '3 dias para o prazo',
-    '1week': '1 semana para o prazo',
-  }
-  const [year, month, day] = dueDate.split('-')
-  const formatted = `${day}/${month}/${year}`
-  return `${map[reminderType] ?? reminderType} — vence em ${formatted}`
 }

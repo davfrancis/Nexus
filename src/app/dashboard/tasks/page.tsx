@@ -45,7 +45,9 @@ const RECURRENCE_OPTIONS = [
 
 const EMPTY_FORM = {
   title: '', description: '', category: 'work', priority: 'medium',
-  status: 'todo', start_date: '', due_date: '', due_time: '', calendar_linked: false,
+  status: 'todo',
+  start_date: '', start_time: '', start_reminder_type: 'none',
+  due_date: '', due_time: '', calendar_linked: false,
   reminder_type: 'none', recurrence: 'none', recurrence_end: '',
 }
 
@@ -83,6 +85,8 @@ export default function TasksPage() {
       priority: t.priority,
       status: t.status,
       start_date: t.start_date || '',
+      start_time: t.start_time || '',
+      start_reminder_type: t.start_reminder_type || 'none',
       due_date: t.due_date || '',
       due_time: t.due_time || '',
       calendar_linked: t.calendar_linked ?? false,
@@ -99,6 +103,8 @@ export default function TasksPage() {
       ...form,
       description: form.description || null,
       start_date: form.start_date || null,
+      start_time: form.start_time || null,
+      start_reminder_type: form.start_date ? form.start_reminder_type : 'none',
       due_date: form.due_date || null,
       due_time: form.due_time || null,
       calendar_linked: form.calendar_linked && !!form.due_date,
@@ -310,10 +316,40 @@ export default function TasksPage() {
               ))}
             </div>
 
-            {/* Data de início */}
+            {/* Data de início + Horário de início */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px', gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-d)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, display: 'block' }}>Data de início</label>
+                <input type="date" value={form.start_date} onChange={e => setForm(p => ({ ...p, start_date: e.target.value }))} style={inp()} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-d)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, display: 'block' }}>Horário</label>
+                <input
+                  type="time"
+                  value={form.start_time}
+                  onChange={e => setForm(p => ({ ...p, start_time: e.target.value }))}
+                  disabled={!form.start_date}
+                  style={{ ...inp(), opacity: form.start_date ? 1 : 0.5 }}
+                />
+              </div>
+            </div>
+
+            {/* Lembrete de início */}
             <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-d)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, display: 'block' }}>Data de início</label>
-              <input type="date" value={form.start_date} onChange={e => setForm(p => ({ ...p, start_date: e.target.value }))} style={inp()} />
+              <label style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-d)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Bell size={11} strokeWidth={1.75} /> Lembrete de início
+              </label>
+              <select
+                value={form.start_reminder_type}
+                onChange={e => setForm(p => ({ ...p, start_reminder_type: e.target.value }))}
+                disabled={!form.start_date}
+                style={{ ...inp(), opacity: form.start_date ? 1 : 0.5 }}
+              >
+                {REMINDER_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              {!form.start_date && (
+                <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Defina uma data de início para ativar</div>
+              )}
             </div>
 
             {/* Data de conclusão + Horário */}

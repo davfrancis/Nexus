@@ -77,10 +77,11 @@ export async function createCalendarEvent(
     startTime: string
     endTime: string
     calendarId?: string
+    reminders?: { method: string; minutes: number }[]
   }
 ): Promise<{ gcalEventId: string; htmlLink: string } | null> {
   const calendarId = event.calendarId || 'primary'
-  const body = {
+  const body: Record<string, unknown> = {
     summary: event.title,
     description: event.description || '',
     start: {
@@ -91,6 +92,9 @@ export async function createCalendarEvent(
       dateTime: `${event.date}T${event.endTime}:00`,
       timeZone: 'America/Sao_Paulo',
     },
+  }
+  if (event.reminders && event.reminders.length > 0) {
+    body.reminders = { useDefault: false, overrides: event.reminders }
   }
 
   const res = await fetch(

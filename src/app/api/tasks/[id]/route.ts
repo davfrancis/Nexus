@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-const ALLOWED_UPDATE_FIELDS = ['title', 'description', 'category', 'priority', 'status', 'start_date', 'due_date', 'due_time', 'calendar_linked', 'reminder_type', 'reminder_sent', 'recurrence', 'recurrence_end']
+const ALLOWED_UPDATE_FIELDS = ['title', 'description', 'category', 'priority', 'status', 'start_date', 'start_time', 'start_reminder_type', 'start_reminder_sent', 'due_date', 'due_time', 'calendar_linked', 'reminder_type', 'reminder_sent', 'recurrence', 'recurrence_end']
 const VALID_REMINDERS = ['none', '15min', '30min', '1h', '2h', '6h', '12h', '1day', '2days', '3days', '1week']
 const VALID_RECURRENCES = ['none', 'daily', 'weekly', 'biweekly', 'monthly', 'yearly']
 const VALID_CATEGORIES = ['work', 'personal', 'gym', 'study', 'urgent']
@@ -57,9 +57,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (updates.recurrence && !VALID_RECURRENCES.includes(updates.recurrence as string)) {
     return NextResponse.json({ error: 'invalid recurrence' }, { status: 400 })
   }
-  // reset reminder_sent when due_date, due_time or reminder_type changes
+  // reset reminder_sent flags when dates/types change
   if ('due_date' in updates || 'due_time' in updates || 'reminder_type' in updates) {
     updates.reminder_sent = false
+  }
+  if ('start_date' in updates || 'start_time' in updates || 'start_reminder_type' in updates) {
+    updates.start_reminder_sent = false
   }
 
   const admin = createAdminClient()

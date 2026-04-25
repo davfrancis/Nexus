@@ -55,6 +55,9 @@ export type Database = {
           recurrence: string
           recurrence_end: string | null
           start_date: string | null
+          start_time: string | null
+          start_reminder_type: string
+          start_reminder_sent: boolean
           due_time: string | null
           created_at: string
           updated_at: string
@@ -74,6 +77,9 @@ export type Database = {
           recurrence?: string
           recurrence_end?: string | null
           start_date?: string | null
+          start_time?: string | null
+          start_reminder_type?: string
+          start_reminder_sent?: boolean
           due_time?: string | null
           created_at?: string
           updated_at?: string
@@ -93,6 +99,9 @@ export type Database = {
           recurrence?: string
           recurrence_end?: string | null
           start_date?: string | null
+          start_time?: string | null
+          start_reminder_type?: string
+          start_reminder_sent?: boolean
           due_time?: string | null
           created_at?: string
           updated_at?: string
