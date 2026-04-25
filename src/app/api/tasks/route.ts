@@ -94,9 +94,10 @@ export async function POST(req: Request) {
     insertPayload.start_reminder_sent = false
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await admin
     .from('tasks')
-    .insert(insertPayload)
+    .insert(insertPayload as any)
     .select()
     .single()
 
