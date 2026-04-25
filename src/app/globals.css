@@ -9,8 +9,8 @@
   --text: #FAFAF9;
   --text2: #A1A1AA;
   --text3: #52525B;
-  --accent: #6366F1;
-  --accent2: #818CF8;
+  --accent: #3B82F6;
+  --accent2: #60A5FA;
   --green: #22C55E;
   --red: #EF4444;
   --amber: #F59E0B;
@@ -39,7 +39,7 @@ html, body {
 * { scrollbar-width: thin; scrollbar-color: var(--bg4) transparent; }
 
 /* Selection */
-::selection { background: rgba(99,102,241,0.28); }
+::selection { background: rgba(59,130,246,0.28); }
 
 /* Focus visible */
 :focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; border-radius: var(--r2); }

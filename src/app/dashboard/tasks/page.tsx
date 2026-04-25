@@ -225,7 +225,7 @@ export default function TasksPage() {
                     <div key={t.id}
                       style={{
                         background: 'var(--bg3)',
-                        border: `1px solid ${t.calendar_linked ? 'rgba(124,111,212,.35)' : 'var(--border)'}`,
+                        border: `1px solid ${t.calendar_linked ? 'rgba(59,130,246,.35)' : 'var(--border)'}`,
                         borderRadius: 10, padding: '12px 14px', cursor: 'pointer',
                         position: 'relative',
                       }}
@@ -235,7 +235,7 @@ export default function TasksPage() {
                         <div style={{
                           position: 'absolute', top: 8, right: 34,
                           fontSize: 10, padding: '1px 7px', borderRadius: 100,
-                          background: 'rgba(99,102,241,.12)', color: 'var(--accent2)',
+                          background: 'rgba(59,130,246,.12)', color: 'var(--accent2)',
                           fontWeight: 500, display: 'flex', alignItems: 'center', gap: 3,
                         }}>
                           <Calendar size={10} strokeWidth={1.75} /> agenda
@@ -278,7 +278,7 @@ export default function TasksPage() {
                         )}
                         {t.calendar_linked && t.due_date && (
                           <button onClick={e => { e.stopPropagation(); goToCalendar(t.due_date!) }}
-                            style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: '1px solid rgba(124,111,212,.4)', background: 'rgba(124,111,212,.08)', color: 'var(--accent2)', fontSize: 11, cursor: 'pointer' }}>
+                            style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: '1px solid rgba(59,130,246,.4)', background: 'rgba(59,130,246,.08)', color: 'var(--accent2)', fontSize: 11, cursor: 'pointer' }}>
                             Ver na Agenda
                           </button>
                         )}
@@ -442,8 +442,8 @@ export default function TasksPage() {
               style={{
                 display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20,
                 padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
-                background: form.calendar_linked ? 'rgba(124,111,212,.1)' : 'var(--bg3)',
-                border: `1px solid ${form.calendar_linked ? 'rgba(124,111,212,.4)' : 'var(--border)'}`,
+                background: form.calendar_linked ? 'rgba(59,130,246,.1)' : 'var(--bg3)',
+                border: `1px solid ${form.calendar_linked ? 'rgba(59,130,246,.4)' : 'var(--border)'}`,
                 transition: 'all .2s',
               }}
             >

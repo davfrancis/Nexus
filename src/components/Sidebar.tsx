@@ -70,7 +70,7 @@ export default function Sidebar() {
           color: var(--text2) !important;
         }
         .nav-item.active {
-          background: rgba(99,102,241,.15) !important;
+          background: rgba(59,130,246,.15) !important;
           color: var(--accent2) !important;
         }
         .nav-item::after {
@@ -171,7 +171,7 @@ export default function Sidebar() {
           letterSpacing: -0.5,
           marginBottom: 16,
           flexShrink: 0,
-          boxShadow: '0 4px 12px rgba(99,102,241,.3)',
+          boxShadow: '0 4px 12px rgba(59,130,246,.3)',
         }}>
           NX
         </div>

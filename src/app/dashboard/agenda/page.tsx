@@ -149,7 +149,7 @@ export default function AgendaPage() {
                   style={{
                     borderRadius: 8, padding: '4px 2px 2px', cursor: 'pointer',
                     minHeight: 56, display: 'flex', flexDirection: 'column', alignItems: 'center',
-                    background: isTodayD ? 'var(--accent)' : isSel ? 'rgba(124,111,212,.15)' : 'transparent',
+                    background: isTodayD ? 'var(--accent)' : isSel ? 'rgba(59,130,246,.15)' : 'transparent',
                     border: isSel && !isTodayD ? '1px solid var(--accent2)' : '1px solid transparent',
                     transition: 'all .15s',
                     position: 'relative',
@@ -170,7 +170,7 @@ export default function AgendaPage() {
                     {dayEvts.slice(0, 2).map(ev => (
                       <div key={ev.id} style={{
                         fontSize: 9, padding: '1px 3px', borderRadius: 2,
-                        background: ev.task_id ? 'rgba(124,111,212,.2)' : `${CAT_COLORS[ev.category] || 'var(--accent)'}30`,
+                        background: ev.task_id ? 'rgba(59,130,246,.2)' : `${CAT_COLORS[ev.category] || 'var(--accent)'}30`,
                         color: ev.task_id ? 'var(--accent2)' : (CAT_COLORS[ev.category] || 'var(--accent2)'),
                         overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', lineHeight: 1.4,
                         opacity: ev.color === 'done' ? .5 : 1,
@@ -224,7 +224,7 @@ export default function AgendaPage() {
                       <div style={{ flex: 1 }}>
                         {/* Badge tarefa */}
                         {isTaskEvent(ev) && (
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 9, padding: '1px 6px', borderRadius: 100, background: 'rgba(124,111,212,.15)', color: 'var(--accent2)', fontWeight: 600, marginBottom: 4 }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 9, padding: '1px 6px', borderRadius: 100, background: 'rgba(59,130,246,.15)', color: 'var(--accent2)', fontWeight: 600, marginBottom: 4 }}>
                             📋 TAREFA {isTaskDone(ev) && '· ✓ CONCLUÍDA'}
                           </div>
                         )}
