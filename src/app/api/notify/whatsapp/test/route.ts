@@ -37,7 +37,7 @@ export async function POST() {
       },
       body: JSON.stringify({
         number: profile.whatsapp_phone,
-        text: '✅ *NEXUS* — Teste de notificação WhatsApp funcionando!',
+        textMessage: { text: '✅ *NEXUS* — Teste de notificação WhatsApp funcionando!' },
       }),
     })
 

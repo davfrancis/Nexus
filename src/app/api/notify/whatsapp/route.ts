@@ -42,7 +42,7 @@ async function sendWhatsApp(
       },
       body: JSON.stringify({
         number: phone,
-        text: message,
+        textMessage: { text: message },
       }),
     })
     return res.ok
