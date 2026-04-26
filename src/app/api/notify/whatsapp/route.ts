@@ -1,8 +1,8 @@
 // src/app/api/notify/whatsapp/route.ts
 // Envia notificações WhatsApp via Evolution API (self-hosted)
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { verifyCronAuth } from '@/lib/cron-auth'
 
 const REMINDER_MINUTES: Record<string, number> = {
   '15min': 15, '30min': 30, '1h': 60, '2h': 120,
@@ -51,10 +51,8 @@ async function sendWhatsApp(
   }
 }
 
-export async function GET() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+export async function GET(req: Request) {
+  if (!verifyCronAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const evolutionUrl      = process.env.EVOLUTION_API_URL
   const evolutionKey      = process.env.EVOLUTION_API_KEY
@@ -65,79 +63,79 @@ export async function GET() {
   }
 
   const admin = createAdminClient()
-
-  const { data: profile } = await admin
+  const { data: profiles } = await admin
     .from('profiles')
-    .select('whatsapp_phone')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile?.whatsapp_phone) {
-    return NextResponse.json({ error: 'WhatsApp phone not configured' }, { status: 400 })
-  }
+    .select('id, whatsapp_phone')
+    .not('whatsapp_phone', 'is', null)
 
   const now = Date.now()
   const sent: string[] = []
-  const startIdsToMark: string[] = []
-  const dueIdsToMark: string[] = []
 
-  // Lembretes de INÍCIO
-  const { data: startTasks } = await admin
-    .from('tasks')
-    .select('id, title, start_date, start_time, start_reminder_type, start_reminder_sent, status')
-    .eq('user_id', user.id)
-    .neq('start_reminder_type', 'none')
-    .eq('start_reminder_sent', false)
-    .neq('status', 'done')
-    .not('start_date', 'is', null)
+  for (const profile of profiles ?? []) {
+    const userId = profile.id
+    const phone = profile.whatsapp_phone as string
 
-  for (const task of startTasks ?? []) {
-    const mins = REMINDER_MINUTES[task.start_reminder_type]
-    if (!mins) continue
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const notifyAt = toMs(task.start_date!, (task as any).start_time ?? null) - mins * 60_000
-    if (now >= notifyAt) {
+    const startIdsToMark: string[] = []
+    const dueIdsToMark: string[] = []
+
+    // Lembretes de INÍCIO
+    const { data: startTasks } = await admin
+      .from('tasks')
+      .select('id, title, start_date, start_time, start_reminder_type, start_reminder_sent, status')
+      .eq('user_id', userId)
+      .neq('start_reminder_type', 'none')
+      .eq('start_reminder_sent', false)
+      .neq('status', 'done')
+      .not('start_date', 'is', null)
+
+    for (const task of startTasks ?? []) {
+      const mins = REMINDER_MINUTES[task.start_reminder_type]
+      if (!mins) continue
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const when = formatDate(task.start_date!, (task as any).start_time ?? null)
-      const label = REMINDER_LABEL[task.start_reminder_type] ?? task.start_reminder_type
-      const msg = `⏰ *NEXUS — Tarefa iniciando em breve*\n\n📋 ${task.title}\n🕐 Início em ${label} — ${when}`
-      await sendWhatsApp(evolutionUrl, evolutionKey, evolutionInstance, profile.whatsapp_phone, msg)
-      sent.push(`start:${task.id}`)
-      startIdsToMark.push(task.id)
+      const notifyAt = toMs(task.start_date!, (task as any).start_time ?? null) - mins * 60_000
+      if (now >= notifyAt) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const when = formatDate(task.start_date!, (task as any).start_time ?? null)
+        const label = REMINDER_LABEL[task.start_reminder_type] ?? task.start_reminder_type
+        const msg = `⏰ *NEXUS — Tarefa iniciando em breve*\n\n📋 ${task.title}\n🕐 Início em ${label} — ${when}`
+        await sendWhatsApp(evolutionUrl, evolutionKey, evolutionInstance, phone, msg)
+        sent.push(`start:${task.id}`)
+        startIdsToMark.push(task.id)
+      }
     }
-  }
 
-  // Lembretes de CONCLUSÃO
-  const { data: dueTasks } = await admin
-    .from('tasks')
-    .select('id, title, due_date, due_time, reminder_type, reminder_sent, status')
-    .eq('user_id', user.id)
-    .neq('reminder_type', 'none')
-    .eq('reminder_sent', false)
-    .neq('status', 'done')
-    .not('due_date', 'is', null)
+    // Lembretes de CONCLUSÃO
+    const { data: dueTasks } = await admin
+      .from('tasks')
+      .select('id, title, due_date, due_time, reminder_type, reminder_sent, status')
+      .eq('user_id', userId)
+      .neq('reminder_type', 'none')
+      .eq('reminder_sent', false)
+      .neq('status', 'done')
+      .not('due_date', 'is', null)
 
-  for (const task of dueTasks ?? []) {
-    const mins = REMINDER_MINUTES[task.reminder_type]
-    if (!mins) continue
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const notifyAt = toMs(task.due_date!, (task as any).due_time ?? null) - mins * 60_000
-    if (now >= notifyAt) {
+    for (const task of dueTasks ?? []) {
+      const mins = REMINDER_MINUTES[task.reminder_type]
+      if (!mins) continue
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const when = formatDate(task.due_date!, (task as any).due_time ?? null)
-      const label = REMINDER_LABEL[task.reminder_type] ?? task.reminder_type
-      const msg = `🔔 *NEXUS — Prazo se aproximando*\n\n📋 ${task.title}\n⏳ Vence em ${label} — ${when}`
-      await sendWhatsApp(evolutionUrl, evolutionKey, evolutionInstance, profile.whatsapp_phone, msg)
-      sent.push(`due:${task.id}`)
-      dueIdsToMark.push(task.id)
+      const notifyAt = toMs(task.due_date!, (task as any).due_time ?? null) - mins * 60_000
+      if (now >= notifyAt) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const when = formatDate(task.due_date!, (task as any).due_time ?? null)
+        const label = REMINDER_LABEL[task.reminder_type] ?? task.reminder_type
+        const msg = `🔔 *NEXUS — Prazo se aproximando*\n\n📋 ${task.title}\n⏳ Vence em ${label} — ${when}`
+        await sendWhatsApp(evolutionUrl, evolutionKey, evolutionInstance, phone, msg)
+        sent.push(`due:${task.id}`)
+        dueIdsToMark.push(task.id)
+      }
     }
-  }
 
-  if (startIdsToMark.length > 0) {
-    await admin.from('tasks').update({ start_reminder_sent: true }).in('id', startIdsToMark).eq('user_id', user.id)
-  }
-  if (dueIdsToMark.length > 0) {
-    await admin.from('tasks').update({ reminder_sent: true }).in('id', dueIdsToMark).eq('user_id', user.id)
+    if (startIdsToMark.length > 0) {
+      await admin.from('tasks').update({ start_reminder_sent: true }).in('id', startIdsToMark).eq('user_id', userId)
+    }
+    if (dueIdsToMark.length > 0) {
+      await admin.from('tasks').update({ reminder_sent: true }).in('id', dueIdsToMark).eq('user_id', userId)
+    }
   }
 
   return NextResponse.json({ sent })
